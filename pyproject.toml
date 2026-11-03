@@ -1,0 +1,37 @@
+[project]
+name = "xiangyu-xinxu-server"
+version = "1.0.0"
+description = "乡语新叙微信小程序后端服务（FastAPI + SQLite，单端口）"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.2.1",
+    "httpx>=0.27.0",
+    # Windows 没有系统自带的 IANA 时区库，zoneinfo 需要它才能解析 Asia/Shanghai
+    "tzdata>=2024.1",
+]
+
+[project.optional-dependencies]
+# 只有真正对接微信支付 v3（RSA 签名 / 回调解密）时才需要装这个分组
+pay = ["cryptography>=42.0.0"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+# 项目没走打包安装（package = false），让 pytest 把 server/ 加进 sys.path，测试才能 import app
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.uv]
+package = false

@@ -1,0 +1,11 @@
+# 统一换行符：仓库里存 LF，Windows 检出也不变 CRLF，避免 Linux 上是 CRLF 的尴尬
+* text=auto eol=lf
+
+# 二进制文件不做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.db binary

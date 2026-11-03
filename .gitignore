@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# 运行时数据（SQLite 及 WAL 文件）
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# 本地配置与密钥
+.env
+*.pem
+*.key
+
+# 工具缓存
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 运行日志（start.ps1 写入）
+logs/
