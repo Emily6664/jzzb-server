@@ -421,7 +421,7 @@ uv run python -m app.seed --force --orders   # 连三条演示订单一起重建
 
 ## 8. 部署
 
-> Ubuntu 22.04 的完整流程（scp 上传、首次启动、systemd、Nginx/HTTPS、后续更新、注意事项）
+> Ubuntu 22.04 的完整流程（scp 上传、Git 部署、首次启动、systemd、Nginx/HTTPS、后续更新、注意事项）
 > 单独写在了 **[`DEPLOY-ubuntu.md`](DEPLOY-ubuntu.md)**，照着做即可；下面只留要点。
 
 ### 8.1 Linux（systemd）
