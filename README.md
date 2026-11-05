@@ -1,7 +1,7 @@
 # 乡语新叙 · 后端服务（server）
 
 为微信小程序 `weapp-xiangyu-xinxu` 提供 API 的独立后端。**一个进程、一个端口、一套 SQLite**，
-不需要 Redis / MySQL / Nginx 之外的任何中间件，反向代理配好就能上线。
+除了你自己选用的反向代理之外，不需要 Redis / MySQL 之类的额外中间件。
 
 接口契约以小程序仓库根目录的 `API_DOC.md` 为准，本服务把文档里的 15 个接口全部实现，
 并补了 4 个文档「5.3 待补充」里列出的接口。
@@ -109,7 +109,10 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000   # 直接用 uvicorn
 ## 3. 配置
 
 全部配置都在 `app/config.py`，可用**同名环境变量**覆盖，也可写进 `server/.env`（参考 `.env.example`）。
-环境变量优先级高于 `.env`。
+环境变量优先级高于 `.env`，改完需要重启才生效。
+
+> **每个变量的作用、默认值、什么时候改、配错了会看到什么 → 见 [`ENV.md`](ENV.md)（逐项说明）。**
+> 下面只是最常见的那几个。
 
 只有这几项通常需要动：
 
@@ -299,94 +302,68 @@ sqlite3 data/app.db "SELECT COUNT(*) FROM nfc_scan_logs;"
 
 ---
 
-## 6. 反向代理
+## 6. 反向代理（软件不限）
 
-服务本身只监听一个端口（`0.0.0.0:8000`），对外统一走 **<https://ecg.proxy.lc.cygnomatic.net/>**。
-**不要把这个端口直接暴露到公网**——让代理处理 TLS 和限流。
+服务只监听一个端口（默认 `8000`），对外统一走 **<https://ecg.proxy.lc.cygnomatic.net/>**；
+TLS、证书、限流都在代理层做，**不要把这个端口直接暴露到公网**。
 
-### 6.1 Nginx（保留 `/api` 前缀，推荐）
+Ubuntu 上的接入步骤、校验命令、502 排查表见 [`DEPLOY-ubuntu.md` 第 4 节](DEPLOY-ubuntu.md)。
+本节只列代理必须满足的条件，不绑定具体软件。
 
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name ecg.proxy.lc.cygnomatic.net;
+### 6.1 代理必须满足的六条
 
-    ssl_certificate     /etc/letsencrypt/live/ecg.proxy.lc.cygnomatic.net/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/ecg.proxy.lc.cygnomatic.net/privkey.pem;
+| # | 要求 | 不满足会怎样 |
+| --- | --- | --- |
+| 1 | 上游指向 `http://127.0.0.1:8000`（同机）或后端的内网 `IP:8000` | 502 / 连不上 |
+| 2 | 路径**原样转发**（保留 `/api`）；或整体剥掉 `/api`——二选一，不要混用 | 404（JSON 信封 `code: 40400`） |
+| 3 | 透传 `Host`、`X-Forwarded-For`、`X-Forwarded-Proto` | 扫码上报的客户端 IP 变成代理 IP；`/docs` 里的地址不对 |
+| 4 | `GET /` 也转发到后端（返回只写着 OK 的页面） | 域名根路径看到的是代理默认页 |
+| 5 | 读超时 ≥ 30s，请求体上限 ≥ 10MB | 偶发 504；以后传作品图会 413 |
+| 6 | HTTPS 终结在代理 | 小程序真机直接拒绝（只允许 https） |
 
-    client_max_body_size 10m;
+关于第 2 条：后端**同时**注册了 `/api/...` 和根路径两套路由，所以保留或剥掉前缀都能用。
+只要保证 `API_PREFIX`（默认 `/api`）和小程序 `BASE_URL` 的结尾一致即可。
 
-    # 根路径：返回后端那个只写着 OK 的页面，用浏览器 / 监控确认服务活着
-    location = / {
-        proxy_pass http://127.0.0.1:8000;
-        access_log off;
-    }
+### 6.2 示例（任选一种，不用都配）
 
-    location /api/ {
-        # 结尾不带 / → 原样转发 /api/...，和 BASE_URL=https://ecg.proxy.lc.cygnomatic.net/api 对应
-        proxy_pass http://127.0.0.1:8000;
-
-        proxy_http_version 1.1;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host  $host;
-
-        proxy_connect_timeout 5s;
-        proxy_read_timeout   30s;
-    }
-
-    # 接口文档（可选；不需要就删掉，并把 DOCS_ENABLED 改成 false）
-    location /docs {
-        proxy_pass http://127.0.0.1:8000;
-    }
-    location = /openapi.json {
-        proxy_pass http://127.0.0.1:8000;
-    }
-
-    # 健康检查给监控用，可选对外
-    location = /healthz {
-        proxy_pass http://127.0.0.1:8000/healthz;
-        access_log off;
-    }
-}
-
-server {
-    listen 80;
-    server_name ecg.proxy.lc.cygnomatic.net;
-    return 301 https://$host$request_uri;
-}
-```
-
-> 如果更喜欢 `proxy_pass http://127.0.0.1:8000/;`（结尾带 `/`，会剥掉 `/api` 前缀），也能正常工作——
-> 服务端同时注册了不带前缀的路由。两种都行，选一种别再混用。
-
-### 6.2 Caddy
+Caddy——自动 HTTPS、自动带 `X-Forwarded-*`：
 
 ```caddyfile
 ecg.proxy.lc.cygnomatic.net {
-    # 整站转发：/ 回 OK，/api/* 是接口，/docs 是文档
     reverse_proxy 127.0.0.1:8000
 }
 ```
 
-Caddy 自动申请证书、自动带 `X-Forwarded-*`。
+Traefik（docker labels）：
+
+```yaml
+labels:
+  - traefik.enable=true
+  - traefik.http.routers.xiangyu.rule=Host(`ecg.proxy.lc.cygnomatic.net`)
+  - traefik.http.routers.xiangyu.entrypoints=websecure
+  - traefik.http.routers.xiangyu.tls.certresolver=letsencrypt
+  - traefik.http.services.xiangyu.loadbalancer.server.port=8000
+```
+
+UI 类（1Panel / 宝塔 / 其他带面板的反代工具）：新建反向代理 → 域名 `ecg.proxy.lc.cygnomatic.net` →
+目标 `http://127.0.0.1:8000` → **不要**开「去掉 /api 前缀」之类的 rewrite → 申请 Let's Encrypt 证书。
 
 ### 6.3 挂在域名子路径下
 
 想让接口地址是 `https://ecg.proxy.lc.cygnomatic.net/xiangyu/api/...`：
 
-1. 代理把 `/xiangyu/api/...` 转成 `/api/...` 发给后端（`proxy_pass http://127.0.0.1:8000/;`）；
-2. 服务端设 `ROOT_PATH=/xiangyu`；
+1. 代理把 `/xiangyu/api/...` 转成 `/api/...` 发给后端（剥掉 `/xiangyu`）；
+2. 服务端设 `ROOT_PATH=/xiangyu`（只影响 `/docs`、OpenAPI 里生成的地址）；
 3. 小程序 `BASE_URL` 用 `https://ecg.proxy.lc.cygnomatic.net/xiangyu/api`。
 
-### 6.4 反代后面要注意的三点
+### 6.4 反代后面要注意的几点
 
-- `proxy_set_header X-Forwarded-For` 一定要带，扫码上报里的 `client_ip` 才准；
-- 服务端已开 `proxy_headers=True`，因此**不要让别人直连 8000 端口**：代理和后台同机时可用防火墙只放行本机，
-  或把 `HOST` 改回 `127.0.0.1`，也可以把 `FORWARDED_ALLOW_IPS` 设成代理的 IP；
-- 小程序要求 https + 备案域名 + 不能带端口，本地调试时可以在开发者工具里勾选「不校验合法域名」。
+- `X-Forwarded-For` 必须透传，扫码上报里的 `client_ip` 才准；
+- 服务端开了 `proxy_headers=True` 信任 `X-Forwarded-*`，所以**别让别人直连 8000**：
+  同机代理时 `HOST=127.0.0.1`，或防火墙只放行本机，或把 `FORWARDED_ALLOW_IPS` 设成代理的 IP；
+- 代理跑在容器/另一台机器里时，`127.0.0.1` 指的是它自己——要写宿主 IP 或同网络的服务名；
+- 小程序要求 https + 备案域名 + 不带端口，本地调试时在开发者工具里勾「不校验合法域名」；
+- 502 的含义永远是「代理连不上后端」，先 `curl http://127.0.0.1:8000/healthz`，再看代理的 upstream 配置。
 
 
 ---
@@ -421,7 +398,7 @@ uv run python -m app.seed --force --orders   # 连三条演示订单一起重建
 
 ## 8. 部署
 
-> Ubuntu 22.04 的完整流程（scp 上传、Git 部署、首次启动、systemd、Nginx/HTTPS、后续更新、注意事项）
+> Ubuntu 22.04 的完整流程（scp 上传、Git 部署、首次启动、systemd、反向代理/HTTPS、后续更新、注意事项）
 > 单独写在了 **[`DEPLOY-ubuntu.md`](DEPLOY-ubuntu.md)**，照着做即可；下面只留要点。
 
 ### 8.1 Linux（systemd）
@@ -493,7 +470,8 @@ nssm set xiangyu-api AppDirectory "D:\Code\jzzb\server"
 nssm start xiangyu-api
 ```
 
-Windows 上反向代理可以用 IIS + URL Rewrite / ARR，或者直接在 WSL / 另一台机器上跑 Nginx。
+Windows 上反向代理可以用 IIS + URL Rewrite / ARR，也可以把服务放到 WSL / 另一台机器上，
+由你惯用的反代软件转发。
 
 防火墙只需放行 80 / 443；`PORT` 那个端口只给本机代理访问，不要对外开放。
 

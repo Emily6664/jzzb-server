@@ -5,7 +5,7 @@ Windows 本地打包上传，服务器上解包运行，不依赖 git。
 
 - 应用目录：`/opt/xiangyu/server`
 - 运行用户：`xiangyu`（专用、无 sudo）
-- 监听：`127.0.0.1:8000`（同机 Nginx 反代；代理在别的机器才改 `0.0.0.0`）
+- 监听：`127.0.0.1:8000`（同机反向代理；代理在别的机器才改 `0.0.0.0`）
 - 数据库：`/opt/xiangyu/server/data/app.db`（SQLite，首次启动自动建表 + 种数据）
 
 > 下文用 `HOST` 表示服务器 IP/域名，`$DOMAIN` 表示对外域名（例如 `ecg.proxy.lc.cygnomatic.net`）。
@@ -16,7 +16,7 @@ Windows 本地打包上传，服务器上解包运行，不依赖 git。
 
 ```bash
 sudo apt update
-sudo apt install -y nginx sqlite3 curl
+sudo apt install -y sqlite3 curl
 
 # 专用用户
 sudo useradd -m -s /bin/bash xiangyu
@@ -90,7 +90,8 @@ chmod 600 .env
 nano .env
 ```
 
-`.env` 至少要改这几行（同机反代时 `HOST` 用 `127.0.0.1` 更安全）：
+`.env` 至少要改这几行（同机反代时 `HOST` 用 `127.0.0.1` 更安全）。
+**每一项的详细说明见 [`ENV.md`](ENV.md)**，包括默认值、什么时候要改、配错了会看到什么：
 
 ```ini
 HOST=127.0.0.1
@@ -155,59 +156,98 @@ journalctl -u xiangyu-api -f        # 实时日志
 
 ---
 
-## 4. Nginx 反向代理 + HTTPS
+## 4. 接入反向代理（软件不限）
 
-```bash
-sudo tee /etc/nginx/sites-available/xiangyu <<'EOF'
-server {
-    listen 80;
-    server_name $DOMAIN;
+后端只监听一个端口，TLS 证书、限流、日志都在你的代理软件里做。这一节只讲**代理必须满足什么**，
+不绑定具体软件（Caddy / Traefik / 1Panel / 宝塔 / HAProxy / FRP / Cloudflare Tunnel 都适用）。
 
-    client_max_body_size 10m;
+### 4.1 后端这边先确认
 
-    # 根路径：返回后端那个只写着 OK 的页面
-    location = / {
-        proxy_pass http://127.0.0.1:8000;
-        access_log off;
-    }
+`.env`：
 
-    location /api/ {
-        # 结尾不带 / → 原样转发 /api/...，和 BASE_URL=https://$DOMAIN/api 对应
-        proxy_pass http://127.0.0.1:8000;
+```ini
+HOST=127.0.0.1     # 代理和后端同一台机器（最安全）；代理在别的机器/容器里才用 0.0.0.0
+PORT=8000          # 改端口的话，代理的 upstream 要同步改
+API_PREFIX=/api    # 必须和小程序 BASE_URL 的结尾一致
+```
 
-        proxy_http_version 1.1;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host  $host;
+改完 `sudo systemctl restart xiangyu-api`。
 
-        proxy_connect_timeout 5s;
-        proxy_read_timeout   30s;
-    }
+### 4.2 代理必须满足的六条
 
-    # 健康检查（可选对外）
-    location = /healthz {
-        proxy_pass http://127.0.0.1:8000/healthz;
-        access_log off;
-    }
+| # | 要求 | 不满足会怎样 |
+| --- | --- | --- |
+| 1 | 上游指向 `http://127.0.0.1:8000`（同机）或后端内网 `IP:8000` | 502，代理自己的错误页 |
+| 2 | 路径**原样转发**（保留 `/api`）；或整体剥掉 `/api`——二选一，不要混用 | 404（JSON 信封 `code: 40400`） |
+| 3 | 透传 `Host`、`X-Forwarded-For`、`X-Forwarded-Proto` | 上报的客户端 IP 变成代理 IP；`/docs` 里地址不对 |
+| 4 | `GET /` 也要转发到后端（返回只写着 OK 的页面） | 域名根路径看到代理的默认页 |
+| 5 | 读超时 ≥ 30s，请求体上限 ≥ 10MB | 偶发 504；以后传作品图会 413 |
+| 6 | HTTPS 终结在代理 | 小程序真机直接拒绝（只允许 https） |
+
+第 2 条说明：后端**同时**注册了 `/api/...` 和根路径两套路由，两种都能用；
+关键是 `API_PREFIX` 与小程序 `BASE_URL` 结尾对齐，且代理规则前后一致。
+
+不需要 WebSocket、不需要 HTTP/2、不需要额外 gzip——接口都是小 JSON，别给自己加戏。
+
+### 4.3 几个常见软件的等价写法
+
+**Caddy**（自动 HTTPS、自动带 `X-Forwarded-*`）：
+
+```caddyfile
+$DOMAIN {
+    reverse_proxy 127.0.0.1:8000
 }
-EOF
-
-sudo ln -sf /etc/nginx/sites-available/xiangyu /etc/nginx/sites-enabled/xiangyu
-sudo nginx -t && sudo systemctl reload nginx
-
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d $DOMAIN
 ```
 
-验证：
+**Traefik**（docker labels，容器与 Traefik 在同一网络时）：
+
+```yaml
+labels:
+  - traefik.enable=true
+  - traefik.http.routers.xiangyu.rule=Host(`$DOMAIN`)
+  - traefik.http.routers.xiangyu.entrypoints=websecure
+  - traefik.http.routers.xiangyu.tls.certresolver=letsencrypt
+  - traefik.http.services.xiangyu.loadbalancer.server.port=8000
+```
+
+后端跑在宿主机（不是容器）时，Traefik 里把服务地址写成 `http://宿主机内网IP:8000`。
+
+**UI 类工具**（1Panel / 宝塔 / 其他带面板的反代）：
+
+1. 新建「反向代理 / 网站」
+2. 域名填 `$DOMAIN`
+3. 目标填 `http://127.0.0.1:8000`
+4. **不要**开「去掉 /api 前缀」之类的 rewrite（保持路径原样最简单）
+5. 申请 / 绑定 Let's Encrypt 证书，开启强制 HTTPS
+6. 保存，然后按 4.4 校验
+
+### 4.4 校验三步
 
 ```bash
-curl -i http://127.0.0.1:8000/healthz          # 后端本身
-curl -i https://$DOMAIN/                        # 应返回只显示 OK 的 HTML
-curl -s https://$DOMAIN/api/goods/list | head -c 200
+curl -i http://127.0.0.1:8000/healthz          # ① 后端本身
+curl -i https://$DOMAIN/                        # ② 走代理的根路径：应只显示 OK
+curl -s https://$DOMAIN/api/goods/list | head -c 200   # ③ 走代理的接口：5 件商品
 ```
+
+三条都正常 = 反代接好了。
+
+### 4.5 502 / 404 对照表
+
+| 现象 | 含义 | 先查什么 |
+| --- | --- | --- |
+| 502 / 503，页面是代理自己的 HTML 错误页 | 代理连不上后端 | `systemctl status xiangyu-api`、`ss -ltnp \| grep 8000`、upstream 地址 |
+| 404，且 body 是 JSON `{"code":40400,...}` | 请求到了后端，但路径不对 | 是否多了一层/少了一层前缀（如 `/api/api/...`） |
+| 200，但内容是代理默认页 / 目录列表 | 代理规则没匹配上 | 域名、路径匹配规则、优先级 |
+| 504 | 后端太慢或卡死 | `journalctl -u xiangyu-api`、数据库是否被锁 |
+| `curl 127.0.0.1:8000` 正常但域名 502 | 应用没问题，是链路 | 代理容器网络、隧道（FRP/Cloudflare Tunnel）、防火墙 |
+
+### 4.6 挂在域名子路径下
+
+想让接口地址是 `https://$DOMAIN/xiangyu/api/...`：
+
+1. 代理把 `/xiangyu/api/...` 转成 `/api/...` 发给后端（剥掉 `/xiangyu`）；
+2. `.env` 里设 `ROOT_PATH=/xiangyu`（只影响 `/docs`、OpenAPI 生成的地址）；
+3. 小程序 `BASE_URL` 用 `https://$DOMAIN/xiangyu/api`。
 
 ---
 
@@ -275,12 +315,12 @@ ls -ld /opt/xiangyu/server/data       # drwxr-xr-x xiangyu xiangyu
 ### 6.2 端口与防火墙
 
 ```bash
-sudo ufw allow 'Nginx Full'      # 80 + 443
+sudo ufw allow 80,443/tcp        # 只对外开放代理端口
 sudo ufw deny 8000               # 8000 只给本机代理用
 sudo ufw enable
 ```
 
-- 同机 Nginx：`HOST=127.0.0.1`（推荐，最省心）。
+- 同机代理：`HOST=127.0.0.1`（推荐，最省心）。
 - 代理在另一台机器 / 容器里：`HOST=0.0.0.0`，同时用安全组只放行代理的 IP。
 
 ### 6.3 不要在服务运行时 `uv sync`
@@ -323,10 +363,14 @@ uv sync --frozen --no-dev
 
 （旧版 uv 用 `UV_INDEX_URL`，两个都设上也无害。）
 
-### 6.7 Nginx 细节
+### 6.7 反向代理细节
 
-- `location = /` 一定要有，否则访问域名根路径不会到后端（会看到 Nginx 默认页）。
-- `proxy_pass http://127.0.0.1:8000;` **结尾不要加 `/`**，否则 `/api` 前缀会被剥掉（后端虽然两种都支持，但保持一种）
+- **保留还是剥掉 `/api`，选定一种就别再改**：后端两套路由都注册了，但 `API_PREFIX` 和小程序 `BASE_URL`
+  必须跟着你选的方案走，否则会出现 `/api/api/...` 或 404。
+- **`GET /` 也要转发**：只配了 `/api/` 的话，访问域名根路径会落到代理的默认站点。
+- **`127.0.0.1` 的陷阱**：代理跑在容器里时它指的是容器自己，要写宿主机内网 IP 或 docker 网络里的服务名。
+- **浏览器/监控探活**：`https://$DOMAIN/` 返回 OK，`/healthz` 返回 JSON，两个都可以给监控用。
+- **502 先别怀疑代码**：`curl http://127.0.0.1:8000/healthz` 通了就说明应用没事，问题在代理或链路。
 - 二维码/图片走 CDN 的话，`MEDIA_BASE_URL` 要配成真实前缀，并在小程序后台加 downloadFile 合法域名。
 
 ### 6.8 小程序侧
@@ -373,7 +417,7 @@ sqlite3 /opt/xiangyu/server/data/app.db "SELECT COUNT(*) FROM orders;"
 - [ ] `curl https://$DOMAIN/api/goods/list` 返回 5 件商品
 - [ ] `data/` 属主是 `xiangyu`，下单能成功（不是 500）
 - [ ] `ufw` 只放行 80/443，8000 不对外
-- [ ] `DOCS_ENABLED=false`（不想公开 `/docs` 就不配 Nginx 的 `/docs`）
+- [ ] `DOCS_ENABLED=false`（不想公开 `/docs` 就在代理里也不要暴露 `/docs`）
 - [ ] 小程序 `USE_MOCK=false`、`BASE_URL` 指向 `https://$DOMAIN/api`，域名已进合法域名
 - [ ] 备份任务（cron 或手动 `sqlite3 .backup`）已安排
 
