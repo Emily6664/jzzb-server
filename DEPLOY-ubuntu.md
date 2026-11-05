@@ -99,7 +99,8 @@ PORT=8000
 API_PREFIX=/api
 DOCS_ENABLED=false
 AUTH_REQUIRED=false
-MEDIA_BASE_URL=https://cdn.你的域名.com/xiangyu
+# 图片/音频不用 CDN：由本服务在 /media 下发（文件放 server/media/ 下）
+MEDIA_BASE_URL=https://$DOMAIN/media
 ```
 
 先前台跑一遍，确认真能起来：
@@ -180,12 +181,15 @@ API_PREFIX=/api    # 必须和小程序 BASE_URL 的结尾一致
 | 1 | 上游指向 `http://127.0.0.1:8000`（同机）或后端内网 `IP:8000` | 502，代理自己的错误页 |
 | 2 | 路径**原样转发**（保留 `/api`）；或整体剥掉 `/api`——二选一，不要混用 | 404（JSON 信封 `code: 40400`） |
 | 3 | 透传 `Host`、`X-Forwarded-For`、`X-Forwarded-Proto` | 上报的客户端 IP 变成代理 IP；`/docs` 里地址不对 |
-| 4 | `GET /` 也要转发到后端（返回只写着 OK 的页面） | 域名根路径看到代理的默认页 |
+| 4 | `GET /`、`/media/*` 也要转发到后端 | 根路径看到代理默认页；图片、音频全部 404 |
 | 5 | 读超时 ≥ 30s，请求体上限 ≥ 10MB | 偶发 504；以后传作品图会 413 |
 | 6 | HTTPS 终结在代理 | 小程序真机直接拒绝（只允许 https） |
 
 第 2 条说明：后端**同时**注册了 `/api/...` 和根路径两套路由，两种都能用；
 关键是 `API_PREFIX` 与小程序 `BASE_URL` 结尾对齐，且代理规则前后一致。
+
+`/media/*` 是图片和音频（服务直出，不需要 CDN，见 `README.md` 6.5），
+所以代理的匹配规则要么覆盖整个站点、要么同时放行 `/api/`、`/media/`、`/`。
 
 不需要 WebSocket、不需要 HTTP/2、不需要额外 gzip——接口都是小 JSON，别给自己加戏。
 
@@ -227,9 +231,10 @@ labels:
 curl -i http://127.0.0.1:8000/healthz          # ① 后端本身
 curl -i https://$DOMAIN/                        # ② 走代理的根路径：应只显示 OK
 curl -s https://$DOMAIN/api/goods/list | head -c 200   # ③ 走代理的接口：5 件商品
+curl -I https://$DOMAIN/media/goods/goods-01-cover.png # ④ 图片（放进 media/ 之后才 200）
 ```
 
-三条都正常 = 反代接好了。
+四条都正常 = 反代接好了。第 ④ 条 404 有两种可能：文件还没放，或者代理没转发 `/media/*`。
 
 ### 4.5 502 / 404 对照表
 
@@ -415,7 +420,9 @@ sqlite3 /opt/xiangyu/server/data/app.db "SELECT COUNT(*) FROM orders;"
 - [ ] `curl http://127.0.0.1:8000/healthz` 返回 `code: 0`
 - [ ] `curl https://$DOMAIN/` 返回只显示 `OK` 的 HTML
 - [ ] `curl https://$DOMAIN/api/goods/list` 返回 5 件商品
+- [ ] `curl -I https://$DOMAIN/media/goods/goods-01-cover.png` 返回 200（文件已放、代理已转发 `/media/*`）
 - [ ] `data/` 属主是 `xiangyu`，下单能成功（不是 500）
+- [ ] `media/` 属主是 `xiangyu`（否则上传/替换素材时写不进去）
 - [ ] `ufw` 只放行 80/443，8000 不对外
 - [ ] `DOCS_ENABLED=false`（不想公开 `/docs` 就在代理里也不要暴露 `/docs`）
 - [ ] 小程序 `USE_MOCK=false`、`BASE_URL` 指向 `https://$DOMAIN/api`，域名已进合法域名

@@ -16,6 +16,7 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
@@ -227,6 +228,25 @@ def _install_routes(app: FastAPI, settings: Settings) -> None:
     health.register_root_routes(app)
 
 
+def _install_media(app: FastAPI, settings: Settings) -> None:
+    """把 MEDIA_DIR 挂到 /media。
+
+    这样图片、音频和接口共用同一个域名和同一个端口，不需要 CDN：
+      https://你的域名/media/goods/goods-01-cover.png
+        -> {MEDIA_DIR}/goods/goods-01-cover.png
+    配 MEDIA_BASE_URL=https://你的域名/media 之后，接口返回的资源地址会自动指过来。
+    """
+    directory = settings.media_dir
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:  # 目录不可写时不要拖垮整个服务
+        logger.warning("媒体目录不可用，跳过 /media 挂载：%s（%s）", directory, exc)
+        return
+
+    app.mount("/media", StaticFiles(directory=str(directory)), name="media")
+    logger.info("媒体目录已挂载：/media -> %s", directory)
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
 
@@ -244,6 +264,7 @@ def create_app() -> FastAPI:
     _install_middleware(app, settings)
     _install_exception_handlers(app)
     _install_routes(app, settings)
+    _install_media(app, settings)
     return app
 
 

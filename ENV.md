@@ -73,10 +73,24 @@
 | 变量 | 默认 | 作用 | 什么时候要改 |
 | --- | --- | --- | --- |
 | `MEDIA_SOURCE_BASE` | `https://cdn.example.com/xiangyu-xinxu` | 种子数据里的占位域名前缀 | 一般不改。除非你直接改 `app/seed_data.py` 里的地址 |
-| `MEDIA_BASE_URL` | 空 | 对外暴露真实 CDN 前缀。配了以后，所有响应里以 `MEDIA_SOURCE_BASE` 开头的 URL 自动替换成它 | **上线必配**，例如 `https://cdn.你的域名.com/xiangyu`。改完重启即可生效，**不用重新导入种子数据** |
+| `MEDIA_BASE_URL` | 空 | 对外暴露的真实前缀。配了以后，所有响应里以 `MEDIA_SOURCE_BASE` 开头的 URL 自动替换成它 | **上线必配**。不用 CDN 就填 `https://你的域名/media`；用对象存储/CDN 就填那个前缀。改完重启生效，**不用重新导入种子数据** |
+| `MEDIA_DIR` | `./media` | 媒体文件根目录（相对路径以 `server/` 为基准）。服务启动时创建并挂到 `/media` | 想把素材放别的磁盘时改；必须是运行用户可写 |
 
-配完别忘了在小程序后台把该域名加进 **downloadFile 合法域名**，否则真机不加载图、不播放音频。
-留空则原样返回占位域名 `cdn.example.com`，图片必然裂。
+**这个项目不需要 CDN。** 图片和音频可以直接由这个服务发出去，和接口共用同一个域名、同一个端口：
+
+```
+接口返回的地址   https://你的域名/media/goods/goods-01-cover.png
+实际读取的文件   {MEDIA_DIR}/goods/goods-01-cover.png
+```
+
+也就是说 `MEDIA_BASE_URL=https://你的域名/media`，然后把文件按种子数据里的目录丢进
+`server/media/{goods,spot,audio,template,material,nfc,work}/` 即可，文件名要和 `seed_data.py` 里的一致。
+
+什么时候才值得上 CDN / 对象存储：图片音频体积大、访问量大、需要就近加速或省服务器带宽。
+小程序阶段一个人测试，服务直出完全够用。
+
+配完之后别忘了在小程序后台把该域名同时加进 **request** 和 **downloadFile** 合法域名，
+否则真机不加载图、不播放音频。留空 `MEDIA_BASE_URL` 则原样返回占位域名 `cdn.example.com`，图片必然裂。
 
 ---
 

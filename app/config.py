@@ -75,12 +75,16 @@ class Settings(BaseSettings):
     # 前端页面目前用 `if (!detail) 显示空态`，所以默认 true。
     not_found_as_null: bool = True
 
-    # ---------- 静态资源域名 ----------
+    # ---------- 静态资源（图片 / 音频） ----------
     # 种子数据里图片 / 音频用的占位域名，默认与 mock/ 完全一致
     media_source_base: str = "https://cdn.example.com/xiangyu-xinxu"
-    # 配了就把上面的前缀替换成真实地址（例如 https://cdn.your-domain.com/xiangyu），
-    # 不用改数据库、也不用重新导入种子数据。留空表示原样返回。
+    # 配了就把上面这个前缀替换成真实地址，不用改数据库、也不用重新导入种子数据。
+    # 不用 CDN 也很简单：填 https://你的域名/media，把文件放进 MEDIA_DIR 即可
+    # （服务会把 /media/* 映射到 MEDIA_DIR，和接口共用同一个域名、同一个端口）。
+    # 留空表示原样返回占位地址。
     media_base_url: str = ""
+    # 媒体文件根目录；服务启动时挂到 /media。目录不存在会自动创建。
+    media_dir: Path = BASE_DIR / "media"
 
     # ---------- 微信小程序 ----------
     wechat_appid: str = ""
@@ -125,6 +129,12 @@ class Settings(BaseSettings):
     @classmethod
     def _resolve_data_dir(cls, value: Any) -> Path:
         path = Path(str(value or "data")).expanduser()
+        return path if path.is_absolute() else (BASE_DIR / path)
+
+    @field_validator("media_dir", mode="before")
+    @classmethod
+    def _resolve_media_dir(cls, value: Any) -> Path:
+        path = Path(str(value or "media")).expanduser()
         return path if path.is_absolute() else (BASE_DIR / path)
 
     @field_validator("db_path", mode="before")

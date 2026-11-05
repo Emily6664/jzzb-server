@@ -124,7 +124,7 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000   # 直接用 uvicorn
 | `API_PREFIX` | `/api` | 必须和小程序 `BASE_URL` 的结尾一致 |
 | `ROOT_PATH` | 空 | 反代把服务挂在子路径（如 `/xiangyu`）时填，影响 `/docs` 与 OpenAPI 的地址 |
 | `AUTH_REQUIRED` | `false` | 是否强制带 token（原因见第 5 节） |
-| `MEDIA_BASE_URL` | 空 | 把占位域名 `cdn.example.com/...` 换成你的真实 CDN |
+| `MEDIA_BASE_URL` | 空 | 把占位域名 `cdn.example.com/...` 换成真实前缀；不用 CDN 就填 `https://你的域名/media`（见 6.5） |
 | `WECHAT_APPID` / `WECHAT_SECRET` | 空 | 不配就走进「演示登录」 |
 | `WECHAT_PAY_ENABLED` | `false` | 微信支付总开关 |
 | `MOCK_PAY_AUTO_CONFIRM` | `true` | 未开支付时，调 `/pay` 直接把订单置为已付款 |
@@ -317,7 +317,7 @@ Ubuntu 上的接入步骤、校验命令、502 排查表见 [`DEPLOY-ubuntu.md` 
 | 1 | 上游指向 `http://127.0.0.1:8000`（同机）或后端的内网 `IP:8000` | 502 / 连不上 |
 | 2 | 路径**原样转发**（保留 `/api`）；或整体剥掉 `/api`——二选一，不要混用 | 404（JSON 信封 `code: 40400`） |
 | 3 | 透传 `Host`、`X-Forwarded-For`、`X-Forwarded-Proto` | 扫码上报的客户端 IP 变成代理 IP；`/docs` 里的地址不对 |
-| 4 | `GET /` 也转发到后端（返回只写着 OK 的页面） | 域名根路径看到的是代理默认页 |
+| 4 | `GET /`、`/media/*` 也转发到后端 | 根路径看到代理默认页；图片、音频全部 404 |
 | 5 | 读超时 ≥ 30s，请求体上限 ≥ 10MB | 偶发 504；以后传作品图会 413 |
 | 6 | HTTPS 终结在代理 | 小程序真机直接拒绝（只允许 https） |
 
@@ -364,6 +364,51 @@ UI 类（1Panel / 宝塔 / 其他带面板的反代工具）：新建反向代�
 - 代理跑在容器/另一台机器里时，`127.0.0.1` 指的是它自己——要写宿主 IP 或同网络的服务名；
 - 小程序要求 https + 备案域名 + 不带端口，本地调试时在开发者工具里勾「不校验合法域名」；
 - 502 的含义永远是「代理连不上后端」，先 `curl http://127.0.0.1:8000/healthz`，再看代理的 upstream 配置。
+
+### 6.5 图片 / 音频：不需要 CDN
+
+图片、音频可以直接由这个服务发出去，**和接口共用同一个域名、同一个端口**。原理是把 `MEDIA_DIR`
+挂到了 `/media`：
+
+```
+接口返回   https://你的域名/media/goods/goods-01-cover.png
+磁盘文件   server/media/goods/goods-01-cover.png
+```
+
+配置只需要一行，然后把文件按目录放进去：
+
+```ini
+MEDIA_BASE_URL=https://你的域名/media
+```
+
+```
+server/media/
+├─ goods/       商品封面与详情图      goods-01-cover.png, goods-01-detail-01.jpg …
+├─ spot/        手绘地图点位配图      spot-01.png …
+├─ template/    拼贴模板封面          tpl-childlike-cover.png …
+├─ material/    拼贴素材（透明底 PNG）mat-childlike-01.png …
+├─ audio/      普通话 / 客家话音频     mat-childlike-01-mandarin.mp3 …
+├─ nfc/         史料图片              NFC-TAG-0001-history-01.jpg …
+└─ work/        拼贴成图              work-20251103210512-4821.png …
+```
+
+文件名要和 `app/seed_data.py` 里的地址对上（就是 `mock/` 里那批名字）。验证：
+
+```bash
+curl -I https://你的域名/media/goods/goods-01-cover.png    # 200 + image/png
+curl -s https://你的域名/api/goods/list | head -c 120       # coverUrl 已是新域名
+```
+
+`/media` 由 FastAPI 的 `StaticFiles` 提供，支持 `Range` 请求，音频可以边下边播。
+
+**什么时候才值得上 CDN / 对象存储**：素材体积大、并发高、需要就近加速或省服务器带宽。
+现在这个体量（几十张图、几段音频）服务直出完全够用；将来换 CDN 只需要改 `MEDIA_BASE_URL`，
+代码和数据库都不用动。
+
+提醒两点：
+
+- 反代要一起转发 `/media/*`（见 6.1 第 4 条），否则图片 404；
+- 小程序后台把该域名同时加进 **request** 与 **downloadFile** 合法域名。
 
 
 ---
