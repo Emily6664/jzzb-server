@@ -29,6 +29,28 @@
       <view class="customize-tip">
         下单后，这幅作品会印在「{{detail.name}}」上（演示效果）
       </view>
+
+      <!-- 换一件文创：作品图不变，只换商品 -->
+      <view class="customize-picker" wx:if="{{customGoods.length > 1}}">
+        <text class="customize-picker-label">换一件文创</text>
+        <scroll-view class="customize-scroll" scroll-x="{{true}}">
+          <view class="customize-row">
+            <view
+              class="customize-item {{item.goodsId === goodsId ? 'is-on' : ''}}"
+              wx:for="{{customGoods}}"
+              wx:key="goodsId"
+              data-id="{{item.goodsId}}"
+              bindtap="onSwitchGoods"
+              aria-role="button"
+              aria-label="换成 {{item.name}}"
+            >
+              <image class="customize-thumb" src="{{item.coverUrl}}" mode="aspectFill" />
+              <text class="customize-item-name">{{item.name}}</text>
+              <text class="customize-item-price">{{item.priceText}}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
     </view>
 
     <!-- ============ 主信息 ============ -->
