@@ -394,6 +394,8 @@ Page({
 
         comp.clear();
         this._lastPlayedMaterialId = '';
+        // 画布清空了，上一张 AI 插画就不再对应画布内容，避免「定制文创」误用旧图
+        this.setData({ generated: null });
       }
     });
   },

@@ -17,7 +17,7 @@
       <view class="customize-body">
         <view class="customize-cell">
           <image class="customize-img" src="{{workImage}}" mode="aspectFit" />
-          <text class="customize-label">拼贴作品</text>
+          <text class="customize-label">作品图</text>
         </view>
         <view class="customize-plus">+</view>
         <view class="customize-cell">
@@ -27,7 +27,7 @@
       </view>
 
       <view class="customize-tip">
-        下单后，这幅拼贴会印在「{{detail.name}}」上（演示效果）
+        下单后，这幅作品会印在「{{detail.name}}」上（演示效果）
       </view>
     </view>
 
