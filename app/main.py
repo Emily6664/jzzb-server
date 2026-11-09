@@ -80,12 +80,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     _configure_logging(settings.log_level)
     bootstrap()
     logger.info(
-        "%s v%s 启动完成｜监听 %s:%s｜数据库 %s｜登录校验=%s｜支付=%s",
+        "%s v%s 启动完成｜监听 %s:%s｜数据库 %s｜资源前缀 %s｜登录校验=%s｜支付=%s",
         settings.app_name,
         __version__,
         settings.host,
         settings.port,
         settings.database_file,
+        settings.media_public_base,
         "强制" if settings.auth_required else "宽松（无 token 走演示用户）",
         "开启" if settings.wechat_pay_enabled else "关闭",
     )

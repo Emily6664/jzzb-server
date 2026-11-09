@@ -40,6 +40,10 @@ def health_payload() -> dict:
         "time": now_text(),
         "database": str(settings.database_file),
         "apiPrefix": settings.api_prefix or "/",
+        # 图片/音频实际下发的前缀：接口返回的 coverUrl 就拼在这个前缀后面，
+        # 排查「图片 pending / 404」时先看这两个字段
+        "mediaBase": settings.media_public_base,
+        "mediaDir": str(settings.media_dir),
         "wechatMock": settings.wechat_mock,
         "payEnabled": settings.wechat_pay_enabled,
     }
