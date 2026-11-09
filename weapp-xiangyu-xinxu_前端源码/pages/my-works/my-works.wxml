@@ -33,6 +33,12 @@
         <text class="work-name">{{item.title || item.templateName}}</text>
         <text class="work-desc">{{item.itemCount ? item.itemCount + ' 个素材 · 长按可删除' : '长按可删除'}}</text>
         <text class="work-time">{{item.createdAt}}</text>
+        <button
+          class="work-custom"
+          catchtap="onCustom"
+          data-path="{{item.imagePath}}"
+          data-id="{{item.workId}}"
+        >定制文创 →</button>
       </view>
     </view>
   </view>

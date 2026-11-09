@@ -146,7 +146,7 @@
   </view>
 
   <button class="btn-line acts-line" bindtap="onCustomGoods" loading="{{navigating}}">
-    定制文创 · 用这张图去挑商品 →
+    {{generated ? '定制文创 · 用 AI 插画去挑商品 →' : '定制文创 · 用这张图去挑商品 →'}}
   </button>
 
   <view class="foot-note">画布上共 {{itemCount}} 个素材 · 当前语音 {{voiceText}}</view>

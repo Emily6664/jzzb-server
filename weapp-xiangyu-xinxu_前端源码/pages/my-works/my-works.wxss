@@ -81,6 +81,26 @@
   color: #9a9488;
 }
 
+/* 用这张作品去定制文创：文字按钮，不抢卡片本身的点击 */
+.work-custom {
+  display: inline-flex;
+  align-items: center;
+  margin: 12rpx 0 0;
+  padding: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  color: #8b6f47;
+  background: transparent;
+}
+
+.work-custom::after {
+  border: none;
+}
+
+.work-custom:active {
+  color: #b3382c;
+}
+
 /* ==================== 按钮 ==================== */
 .btn {
   display: flex;

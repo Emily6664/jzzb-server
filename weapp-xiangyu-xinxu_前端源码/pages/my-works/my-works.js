@@ -1,14 +1,15 @@
 // pages/my-works/my-works.js —— 我的作品
 //
-// 作品由拼贴页导出海报后写入本地 storage（键 MY_WORKS），这里读取并展示。
-// TODO 作品列表接口待后端补充（见 API_DOC.md 5.3），联调时把 loadWorks 换成
-//      collageApi.getWorks?.() 之类的接口调用即可，页面结构不用改。
+// 数据两路合并：本地 storage（键 MY_WORKS，拼贴页写入）+ 服务端 /collage/works。
+// 每张作品都可以直接进入「文创定制」页（把小图印到商品上预览/下单）。
 
 const collageApi = require('../../api/collage');
 const { get, set } = require('../../utils/storage');
 
 const WORKS_KEY = 'MY_WORKS';
 const DEFAULT_UI_MODE = 'normal';
+// 定制文创默认带的商品（与拼贴页保持一致）
+const CUSTOM_GOODS_ID = 'goods-01';
 
 Page({
   data: {
@@ -143,9 +144,27 @@ Page({
     });
   },
 
+  /** 用这张作品去定制文创（跳商品详情并带上作品图） */
+  onCustom(e) {
+    const path = e.currentTarget.dataset.path;
+
+    if (!path) {
+      wx.showToast({ title: '作品图还没准备好', icon: 'none' });
+      return;
+    }
+
+    const url =
+      '/pages/goods-detail/goods-detail?goodsId=' + CUSTOM_GOODS_ID +
+      '&workImage=' + encodeURIComponent(path);
+
+    wx.navigateTo({
+      url: url,
+      fail: () => wx.redirectTo({ url: url })
+    });
+  },
+
   /** 作品图加载失败：标记后改用文字占位，避免出现破图 */
-  onWorkImageError(e) {
-    const workId = e.currentTarget.dataset.id;
+  onWorkImageError(e) {    const workId = e.currentTarget.dataset.id;
     if (!workId) return;
 
     const failed = Object.assign({}, this.data.failedImages);

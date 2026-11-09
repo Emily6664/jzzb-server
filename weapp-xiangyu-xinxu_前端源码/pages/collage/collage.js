@@ -672,15 +672,26 @@ Page({
 
   /* ==================== 定制文创 ==================== */
 
-  /** 带上作品图片参数跳到商品详情 */
+  /**
+   * 带上作品图片参数跳到商品详情。
+   * 优先用「AI 生成的家庭插画」；没有生成过才退回画布导出的手绘海报。
+   */
   onCustomGoods() {
     if (this.data.navigating) return;
 
     const base = '/pages/goods-detail/goods-detail?goodsId=' + CUSTOM_GOODS_ID;
-    const comp = this.canvas();
+    const generated = this.data.generated;
 
+    // 1) 已经 AI 生成过：直接用生成的插画（本地文件优先，其次服务端地址）
+    if (generated && (generated.localPath || generated.imageUrl)) {
+      this.goCustomGoods(base, generated.localPath || generated.imageUrl);
+      return;
+    }
+
+    // 2) 没生成过：导出画布上的手绘拼贴
+    const comp = this.canvas();
     if (!comp || !comp.hasItems()) {
-      wx.navigateTo({ url: base, fail: () => wx.redirectTo({ url: base }) });
+      this.goCustomGoods(base, '');
       return;
     }
 
@@ -688,21 +699,21 @@ Page({
 
     comp
       .exportPoster()
-      .then((tempPath) => {
-        const url = base + '&workImage=' + encodeURIComponent(tempPath);
-        wx.navigateTo({
-          url: url,
-          fail: () => wx.redirectTo({ url: url }),
-          complete: () => this.setData({ navigating: false })
-        });
-      })
+      .then((tempPath) => this.goCustomGoods(base, tempPath))
       .catch((err) => {
         console.error('[collage] 作品图导出失败，降级跳转:', err);
-        wx.navigateTo({
-          url: base,
-          fail: () => wx.redirectTo({ url: base }),
-          complete: () => this.setData({ navigating: false })
-        });
+        this.goCustomGoods(base, '');
       });
+  },
+
+  /** 统一跳转：workImage 为空时不带该参数 */
+  goCustomGoods(base, image) {
+    const url = image ? base + '&workImage=' + encodeURIComponent(image) : base;
+
+    wx.navigateTo({
+      url: url,
+      fail: () => wx.redirectTo({ url: url }),
+      complete: () => this.setData({ navigating: false })
+    });
   }
 });
