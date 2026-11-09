@@ -186,7 +186,28 @@ def _insert_demo_orders(conn: sqlite3.Connection, user_id: str) -> int:
     return len(DEMO_ORDERS)
 
 
-def seed_all(force: bool = False, reset_orders: bool = False) -> dict[str, int]:
+def sync_order_covers(conn: sqlite3.Connection) -> int:
+    """把订单里的封面快照刷新成商品当前封面。
+
+    订单的 cover_url 是「下单时快照」，这样商品换图后老订单仍显示老图。
+    但图片改名/换目录时，快照里的地址就成了死链（例如 goods-05-cover.png -> 5-1.png），
+    这时用 --sync-covers 一次性对齐即可。返回受影响行数。
+    """
+    cursor = conn.execute(
+        """
+        UPDATE orders
+           SET cover_url = (SELECT g.cover_url FROM goods g WHERE g.goods_id = orders.goods_id)
+         WHERE EXISTS (SELECT 1 FROM goods g WHERE g.goods_id = orders.goods_id)
+        """
+    )
+    return cursor.rowcount if cursor.rowcount and cursor.rowcount > 0 else 0
+
+
+def seed_all(
+    force: bool = False,
+    reset_orders: bool = False,
+    sync_covers: bool = False,
+) -> dict[str, int]:
     """导入种子数据，返回各表写入条数（便于日志）。"""
     settings = get_settings()
     counts: dict[str, int] = {}
@@ -217,6 +238,9 @@ def seed_all(force: bool = False, reset_orders: bool = False) -> dict[str, int]:
         else:
             counts["demo_orders"] = 0
 
+        if sync_covers:
+            counts["order_covers"] = sync_order_covers(conn)
+
     logger.info("种子数据就绪：%s", counts)
     return counts
 
@@ -233,13 +257,22 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="同时重建三条演示订单（不影响用户自己下的订单之外的数据）",
     )
+    parser.add_argument(
+        "--sync-covers",
+        action="store_true",
+        help="把订单里的封面快照刷新成商品当前封面（图片改名后用）",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(level="INFO", format="%(levelname)s %(name)s: %(message)s")
 
     settings = get_settings()
     print(f"数据库文件：{settings.database_file}")
-    counts = seed_all(force=args.force, reset_orders=args.orders)
+    counts = seed_all(
+        force=args.force,
+        reset_orders=args.orders,
+        sync_covers=args.sync_covers,
+    )
     for key, value in counts.items():
         print(f"  {key:12s} {value}")
 

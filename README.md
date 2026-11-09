@@ -454,7 +454,13 @@ Windows：`sqlite3.exe data\app.db ".backup 'backup\app.db'"`，或直接停服�
 ```bash
 uv run python -m app.seed --force            # 重建参考数据（不动用户和订单）
 uv run python -m app.seed --force --orders   # 连三条演示订单一起重建
+uv run python -m app.seed --sync-covers      # 只刷订单里的封面快照（图片改名后用这个）
 ```
+
+> **图片改名或换目录后，订单页会出现裂图**：订单的 `cover_url` 是「下单时的快照」，
+> `--force` 只重建商品表，不会动订单。这时跑一次 `--sync-covers`，把所有订单的封面
+> 对齐成商品当前封面即可（只改封面地址，不动订单金额、状态、收货信息）。
+> 如果小程序本地还存着旧订单（storage 里的 `MY_ORDERS`），需要清缓存才会消失。
 
 种子导入是幂等的（`INSERT OR IGNORE`），不带 `--force` 不会覆盖你手工改过的数据。
 也可以直接用 `sqlite3` 改单条记录，重启不需要。
