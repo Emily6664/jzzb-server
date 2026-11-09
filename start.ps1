@@ -1,31 +1,31 @@
-# start.ps1 -- start the xiangyu-xinxu API server, optionally in background with auto-restart.
+# start.ps1 -- start the API server and KEEP it running (background by default).
 #
-#   .\start.ps1                 run in this console (Ctrl+C to stop)
-#   .\start.ps1 -Background     run hidden, keeps running after you close the terminal
-#   .\start.ps1 -Port 8010      use another port
+#   .\start.ps1                background + auto-restart; closing the terminal does not stop it
+#   .\start.ps1 -Foreground    run in this console instead (Ctrl+C stops it, logs go to the console)
+#   .\start.ps1 -Port 8010     another port
+#   .\start.ps1 -WatchDog      internal: the supervisor loop (used by the background launch
+#                              and by the scheduled task registered by service.ps1)
 #
-# Background mode writes into .\logs\:
+# Stop with: .\stop.ps1
+# Background logs live in .\logs\:
 #   server.log     uvicorn output (UTF-8)
 #   watchdog.log   one line per process exit: timestamp, exit code, uptime
 #   watchdog.pid   pid of the supervising process
 #
-# Stop with: .\stop.ps1
-#
 # Notes
-#   * .venv\Scripts\python.exe is used directly on purpose: running through
-#     "uv run" adds a parent process and lets uv re-sync the environment, which
-#     can break a long-running server.
-#   * Output redirection goes through cmd.exe on purpose. PowerShell 5.1 turns a
-#     native command's stderr into NativeCommandError records, and with
-#     $ErrorActionPreference = 'Stop' the supervisor would die as soon as uvicorn
-#     logs its first line (uvicorn logs to stderr).
-#   * Keep this file ASCII-only: Windows PowerShell 5.1 reads .ps1 as ANSI unless
-#     it carries a BOM.
+#   * .venv\Scripts\python.exe is used directly on purpose: "uv run" adds a parent process
+#     and may re-sync the environment, which can break a long-running server.
+#   * Output redirection goes through cmd.exe on purpose. PowerShell 5.1 turns a native
+#     command's stderr into NativeCommandError; with a terminating error preference the
+#     supervisor would die the moment uvicorn logs its first line (uvicorn logs to stderr).
+#   * Keep this file ASCII-only: Windows PowerShell 5.1 reads .ps1 as ANSI without a BOM.
 
 param(
+    [switch]$Foreground,
+    # kept for compatibility: background is the default now
     [switch]$Background,
     [int]$Port = 0,
-    # internal: this process is the watchdog loop
+    # internal: this process is the supervising loop
     [switch]$WatchDog
 )
 
@@ -58,81 +58,92 @@ function Test-Port([int]$port) {
     finally { $client.Dispose() }
 }
 
-# ---------------------------------------------------------------- background
-if ($Background) {
-    # never start a second supervisor for the same port
-    if (Test-Port $effectivePort) {
-        "already running on port $effectivePort - use .\stop.ps1 first"
-        return
-    }
-
-    $psArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $root 'start.ps1'), '-WatchDog')
-    if ($Port -gt 0) { $psArgs += @('-Port', "$Port") }
-
-    $watch = Start-Process -FilePath 'powershell.exe' -ArgumentList $psArgs -WindowStyle Hidden -PassThru
-    Set-Content -LiteralPath $pidFile -Value $watch.Id -Encoding ascii
-
-    for ($i = 0; $i -lt 40; $i++) {
-        Start-Sleep -Milliseconds 500
-        if (Test-Port $effectivePort) { break }
-    }
-
-    if (Test-Port $effectivePort) {
-        "started in background: http://127.0.0.1:$effectivePort  (watchdog pid=$($watch.Id))"
-        "logs: $serverLog"
-    } else {
-        "watchdog started (pid=$($watch.Id)) but port $effectivePort is not listening yet."
-        "check: $serverLog and $watchLog"
-    }
-    return
-}
-
-# ---------------------------------------------------------------- watchdog loop
+# ---------------------------------------------------------------- supervisor loop
 if ($WatchDog) {
     # make python write UTF-8 into the redirected log file
     $env:PYTHONIOENCODING = 'utf-8'
 
-    # starting a second watchdog while one is already serving would just produce a
-    # bind error every 3 seconds; refuse early instead of looping
+    # another supervisor already serving this port would just produce a bind error every
+    # few seconds; refuse early instead of looping
     if (Test-Port $effectivePort) {
         $line = "[{0}] port {1} is already in use, watchdog exits" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $effectivePort
         Add-Content -LiteralPath $watchLog -Value $line -Encoding utf8
         return
     }
 
-    while ($true) {
-        # single-file rotation so the log cannot grow forever
-        if ((Test-Path -LiteralPath $serverLog) -and ((Get-Item -LiteralPath $serverLog).Length -gt 5MB)) {
-            Move-Item -LiteralPath $serverLog -Destination "$serverLog.1" -Force
+    # Record this process so .\stop.ps1 can stop the supervisor before the server; otherwise
+    # the supervisor would simply restart run.py three seconds after it was killed.
+    Set-Content -LiteralPath $pidFile -Value $PID -Encoding ascii
+    try {
+        while ($true) {
+            # single-file rotation so the log cannot grow forever
+            if ((Test-Path -LiteralPath $serverLog) -and ((Get-Item -LiteralPath $serverLog).Length -gt 5MB)) {
+                Move-Item -LiteralPath $serverLog -Destination "$serverLog.1" -Force
+            }
+
+            $startedAt = Get-Date
+            # cmd.exe performs the redirection: no PowerShell stream handling involved
+            $inner = '"{0}" "{1}" >> "{2}" 2>&1' -f $python, $entry, $serverLog
+            & cmd.exe /c $inner
+            $code = $LASTEXITCODE
+
+            $seconds = ((Get-Date) - $startedAt).TotalSeconds
+            $line = "[{0}] run.py exited code={1} after {2:N0}s" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $code, $seconds
+            Add-Content -LiteralPath $watchLog -Value $line -Encoding utf8
+
+            # crashed immediately (bad config, port taken, db locked...)? do not spin
+            if ($seconds -lt 5) { Start-Sleep -Seconds 15 } else { Start-Sleep -Seconds 3 }
         }
-
-        $startedAt = Get-Date
-        # cmd.exe does the redirection: no PowerShell stream/error-record handling involved
-        $inner = '"{0}" "{1}" >> "{2}" 2>&1' -f $python, $entry, $serverLog
-        & cmd.exe /c $inner
-        $code = $LASTEXITCODE
-
-        $seconds = ((Get-Date) - $startedAt).TotalSeconds
-        $line = "[{0}] run.py exited code={1} after {2:N0}s" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $code, $seconds
-        Add-Content -LiteralPath $watchLog -Value $line -Encoding utf8
-
-        # crashed immediately (bad config, port taken, db locked...)? do not spin
-        if ($seconds -lt 5) { Start-Sleep -Seconds 15 } else { Start-Sleep -Seconds 3 }
+    } finally {
+        # only remove it if it is still ours
+        if (Test-Path -LiteralPath $pidFile) {
+            $current = ((Get-Content -LiteralPath $pidFile -Raw) -replace '\s', '')
+            if ($current -eq "$PID") { Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue }
+        }
     }
 }
 
-# ---------------------------------------------------------------- foreground
-# Port already taken? Say it in one line instead of letting uvicorn dump
-# "[Errno 10048] error while attempting to bind on address" after it has
-# already printed a full startup banner (that looks like a crash, but it is
-# just "another instance is already serving").
-if (Test-Port $effectivePort) {
-    "port $effectivePort is already in use - the service is probably already running."
-    "  check:   curl http://127.0.0.1:$effectivePort/healthz"
-    "  restart: .\stop.ps1; .\start.ps1"
-    "  (or keep using the running instance; no need to start a second one)"
-    exit 1
+# ---------------------------------------------------------------- foreground (debug)
+if ($Foreground) {
+    # Say it in one line instead of letting uvicorn dump "[Errno 10048] ..." after it has
+    # already printed a full startup banner (that looks like a crash, it is just "already running").
+    if (Test-Port $effectivePort) {
+        "port $effectivePort is already in use - the service is probably already running."
+        "  check:   curl http://127.0.0.1:$effectivePort/healthz"
+        "  restart: .\stop.ps1; .\start.ps1 -Foreground"
+        "  (or just keep using the running instance)"
+        exit 1
+    }
+
+    & cmd.exe /c ('"{0}" "{1}"' -f $python, $entry)
+    exit $LASTEXITCODE
 }
 
-& cmd.exe /c ('"{0}" "{1}"' -f $python, $entry)
-exit $LASTEXITCODE
+# ---------------------------------------------------------------- background (default)
+# Never start a second supervisor for the same port.
+if (Test-Port $effectivePort) {
+    "already running on port $effectivePort - nothing to do"
+    "  health:  curl http://127.0.0.1:$effectivePort/healthz"
+    "  stop:    .\stop.ps1"
+    exit 0
+}
+
+$psArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $root 'start.ps1'), '-WatchDog')
+if ($Port -gt 0) { $psArgs += @('-Port', "$Port") }
+
+$watch = Start-Process -FilePath 'powershell.exe' -ArgumentList $psArgs -WindowStyle Hidden -PassThru
+Set-Content -LiteralPath $pidFile -Value $watch.Id -Encoding ascii
+
+for ($i = 0; $i -lt 40; $i++) {
+    Start-Sleep -Milliseconds 500
+    if (Test-Port $effectivePort) { break }
+}
+
+if (Test-Port $effectivePort) {
+    "started in background on http://127.0.0.1:$effectivePort  (watchdog pid=$($watch.Id))"
+    "closing this terminal does NOT stop it. logs: $serverLog"
+    "stop: .\stop.ps1    watchdog log: $watchLog"
+} else {
+    "watchdog started (pid=$($watch.Id)) but port $effectivePort is not listening yet."
+    "check: $serverLog and $watchLog"
+}

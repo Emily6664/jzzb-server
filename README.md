@@ -504,17 +504,33 @@ sudo systemctl status xiangyu-api && journalctl -u xiangyu-api -f
 
 ### 8.2 Windows
 
-推荐用仓库自带的两个脚本（无第三方依赖，自带看门狗）：
+三个脚本，互相配合，不需要第三方依赖：
 
 ```powershell
 cd D:\Code\jzzb\server
 
-.\start.ps1                 # 前台跑，Ctrl+C 停（调试用）
-.\start.ps1 -Background     # 后台跑，关掉终端也不影响；退出后 3 秒自动拉起
+.\start.ps1                 # 后台常驻：启动 + 自动重启，关掉终端也不停
+.\start.ps1 -Foreground     # 前台跑（调试用，Ctrl+C 停，日志打在控制台）
 .\start.ps1 -Port 8010      # 换端口
+
+.\service.ps1 -Action install       # 装成登录自启（隐藏窗口，不需要管理员）
+.\service.ps1 -Action status        # 自启状态 + 端口 + healthz + 看门狗
+.\service.ps1 -Action stop          # 停服务（保留自启）
+.\service.ps1 -Action remove        # 删掉自启 + 停服务
 
 .\stop.ps1                  # 停掉看门狗 + 服务（先停看门狗，否则它会把服务拉起来）
 ```
+
+**`.\start.ps1` 默认就是后台模式**：它拉一个隐藏的看门狗进程，看门狗再跑 uvicorn；
+uvicorn 退出后 3 秒自动重启（启动即崩的情况退避 15 秒，避免疯狂刷日志）。
+关终端、Ctrl+C 都不会带走它，因为它已经脱离了当前控制台。
+
+**开机/登录自启**：`.\service.ps1 -Action install` 会写一条 HKCU 的 Run 项
+（`HKCU\Software\Microsoft\Windows\CurrentVersion\Run\xiangyu-api`），登录时隐藏启动看门狗。
+用注册表而不是「启动文件夹」，是因为 Windows Defender 的「受控文件夹访问」经常会拦住往
+Startup 目录写文件（我实测就被拒了）。
+需要**开机即启、不用登录**时用 `.\service.ps1 -Action install -AtStartup`（要求管理员权限，
+它会注册计划任务；没有管理员权限会自动回落到 HKCU Run 并提示）。
 
 后台模式的产物都在 `logs\`：
 
@@ -522,19 +538,12 @@ cd D:\Code\jzzb\server
 | --- | --- |
 | `logs\server.log` | uvicorn 日志（UTF-8，超过 5MB 自动轮转为 `server.log.1`） |
 | `logs\watchdog.log` | 每次进程退出记一行：时间、退出码、运行时长 —— **排查「服务为什么停了」先看这个** |
-| `logs\watchdog.pid` | 看门狗进程号 |
+| `logs\watchdog.pid` | 看门狗进程号（`stop.ps1` 靠它先杀看门狗） |
 
 > 看日志注意编码：PowerShell 5.1 的 `Get-Content` 默认按 ANSI 读，中文会花。
 > 用 `Get-Content -Encoding UTF8 .\logs\server.log -Tail 20 -Wait`，或者用 VS Code 打开。
 
-**开机自启（任务计划程序，可选）**
-
-```powershell
-schtasks /Create /TN "xiangyu-api" /SC ONSTART /RU SYSTEM /RL HIGHEST /F `
-  /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File D:\Code\jzzb\server\start.ps1 -WatchDog"
-```
-
-**注册成 Windows 服务（NSSM，可选）**
+**真·Windows 服务（NSSM，可选）**——要在 `services.msc` 里看到它、或者完全不要登录会话时才需要：
 
 ```powershell
 nssm install xiangyu-api "D:\Code\jzzb\server\.venv\Scripts\python.exe" "D:\Code\jzzb\server\run.py"
