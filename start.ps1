@@ -122,5 +122,17 @@ if ($WatchDog) {
 }
 
 # ---------------------------------------------------------------- foreground
+# Port already taken? Say it in one line instead of letting uvicorn dump
+# "[Errno 10048] error while attempting to bind on address" after it has
+# already printed a full startup banner (that looks like a crash, but it is
+# just "another instance is already serving").
+if (Test-Port $effectivePort) {
+    "port $effectivePort is already in use - the service is probably already running."
+    "  check:   curl http://127.0.0.1:$effectivePort/healthz"
+    "  restart: .\stop.ps1; .\start.ps1"
+    "  (or keep using the running instance; no need to start a second one)"
+    exit 1
+}
+
 & cmd.exe /c ('"{0}" "{1}"' -f $python, $entry)
 exit $LASTEXITCODE
