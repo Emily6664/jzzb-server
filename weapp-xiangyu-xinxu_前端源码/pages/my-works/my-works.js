@@ -36,20 +36,61 @@ Page({
     });
   },
 
-  /** 读取本地作品列表 */
+  /** 读取作品：本地 storage + 服务端 /collage/works，按 workId 合并 */
   loadWorks() {
-    const list = get(WORKS_KEY, []) || [];
+    const localList = (get(WORKS_KEY, []) || []).map((item) => ({
+      workId: item.workId,
+      imagePath: item.imagePath || item.imageUrl || '',
+      imageUrl: item.imageUrl || '',
+      title: item.title || '',
+      templateName: item.templateName || '拼贴作品',
+      itemCount: item.itemCount || 0,
+      createdAt: item.createdAt || '',
+      backendSaved: !!item.backendSaved,
+      remote: false
+    }));
 
-    this.setData({
-      works: list.map((item) => ({
-        workId: item.workId,
-        imagePath: item.imagePath,
-        templateName: item.templateName || '拼贴作品',
-        itemCount: item.itemCount || 0,
-        createdAt: item.createdAt || ''
-      })),
-      loaded: true
+    this.setData({ works: localList, loaded: true });
+
+    collageApi
+      .getWorks()
+      .then((remoteList) => {
+        this.setData({ works: this.mergeWorks(localList, remoteList || []) });
+      })
+      .catch((err) => {
+        console.warn('[my-works] 服务器作品加载失败，先只显示本地作品:', err);
+      });
+  },
+
+  /**
+   * 本地与服务端作品合并：同一 workId 以服务端为准（说明已经存进数据库），
+   * 图片优先用本地文件（离线也能看），没有本地文件就用服务端 URL。
+   */
+  mergeWorks(localList, remoteList) {
+    const byId = Object.create(null);
+
+    localList.forEach((item) => {
+      byId[item.workId] = item;
     });
+
+    remoteList.forEach((item) => {
+      const existing = byId[item.workId];
+      byId[item.workId] = {
+        workId: item.workId,
+        imagePath: (existing && existing.imagePath) || item.imageUrl || '',
+        imageUrl: item.imageUrl || '',
+        title: item.title || (existing && existing.title) || '',
+        templateName: (existing && existing.templateName) || item.title || '家庭专属插画',
+        itemCount: existing ? existing.itemCount : item.itemCount || 0,
+        createdAt: item.createdAt || (existing && existing.createdAt) || '',
+        backendSaved: true,
+        remote: true
+      };
+    });
+
+    return Object.keys(byId)
+      .map((key) => byId[key])
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   },
 
   /** 点击作品看大图 */
@@ -81,8 +122,20 @@ Page({
       success: (res) => {
         if (!res.confirm) return;
 
-        const list = (get(WORKS_KEY, []) || []).filter((item) => item.workId !== workId);
-        set(WORKS_KEY, list);
+        const list = get(WORKS_KEY, []) || [];
+        const target = list.filter((item) => item.workId === workId)[0];
+
+        set(
+          WORKS_KEY,
+          list.filter((item) => item.workId !== workId)
+        );
+
+        // 已经存到服务端的作品，删本地时一并删掉
+        if (target && target.backendSaved) {
+          collageApi.deleteWork(workId).catch((err) => {
+            console.warn('[my-works] 服务器删除失败，作品仍保留在服务端:', err);
+          });
+        }
 
         this.loadWorks();
         wx.showToast({ title: '已删除', icon: 'none' });

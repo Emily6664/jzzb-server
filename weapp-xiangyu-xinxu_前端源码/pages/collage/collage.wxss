@@ -255,6 +255,53 @@
   color: var(--mute);
 }
 
+/* ==================== AI 生成结果 ==================== */
+/* 沿用「发丝线分组」的语言，不另起卡片；图片用细边框框住，像一张相纸 */
+.result-img {
+  display: block;
+  width: 100%;
+  height: 760rpx;
+  margin-top: 18rpx;
+  background: var(--paper-2);
+  border: var(--hair) solid var(--rule);
+}
+
+.result-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 14rpx;
+  padding-bottom: 14rpx;
+  border-bottom: var(--hair) solid var(--rule);
+}
+
+.result-title {
+  font-family: var(--font-display);
+  font-size: 30rpx;
+  letter-spacing: 2rpx;
+  color: var(--ink);
+}
+
+.result-time {
+  font-size: var(--f-micro);
+  letter-spacing: 1rpx;
+  color: var(--mute);
+}
+
+.result-acts {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 16rpx;
+}
+
+.result-acts .mini-btn {
+  flex: 0 0 auto;
+}
+
+.ui-mode-elder .result-img { height: 680rpx; }
+.ui-mode-elder .result-title { font-size: 34rpx; }
+
 /* ==================== 模式补丁 ==================== */
 .ui-mode-elder .tpl { min-width: 200rpx; padding: 18rpx 22rpx; }
 .ui-mode-elder .tpl-name { font-size: 32rpx; }

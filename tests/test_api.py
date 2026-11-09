@@ -171,6 +171,10 @@ def test_collage_generate_illustration(client: TestClient, api: str):
     assert served.status_code == 200
     assert served.headers["content-type"].startswith("image/jpeg")
 
+    # 生成即入库：不用再调 /collage/works，作品列表里就能看到
+    works = _data(client.get(f"{api}/collage/works"))
+    assert any(item["workId"] == payload["workId"] for item in works)
+
     # 生成物是运行时产物，不要留在仓库里
     (get_settings().media_dir / "work" / name).unlink(missing_ok=True)
 

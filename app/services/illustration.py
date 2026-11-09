@@ -250,3 +250,45 @@ def render(
 def image_size(path: Path) -> tuple[int, int]:
     with Image.open(path) as image:
         return image.width, image.height
+
+
+def mirror_remote(url: str, work_id: str) -> tuple[str, int, int]:
+    """把图生图服务返回的 https 图片下载到本地 media/work。
+
+    好处有两个：
+    - 对外只有一个域名，小程序不用再给服务商的图片域名配 downloadFile 白名单；
+    - 图片真正落在自己服务器上，不会因为服务商链接过期而变成裂图。
+    """
+    import httpx
+
+    settings = get_settings()
+
+    with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+        response = client.get(url, headers={"User-Agent": "xiangyu-xinxu-server/1.0"})
+        response.raise_for_status()
+        data = response.content
+
+    if not data:
+        raise IllustrationError("图生图返回了空图片")
+    if len(data) > MAX_BYTES:
+        raise IllustrationError(f"图生图返回的图片过大（{len(data) / 1024 / 1024:.1f}MB）")
+
+    try:
+        with Image.open(io.BytesIO(data)) as source:
+            source.load()
+            image = source.convert("RGB")
+    except Exception as exc:
+        raise IllustrationError("图生图返回的内容不是图片") from exc
+
+    target = settings.media_dir / "work" / f"{work_id}.jpg"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    image.save(target, format="JPEG", quality=92, optimize=True, progressive=True)
+
+    logger.info(
+        "图生图结果已镜像到本地：%s（%dx%d，%dKB）",
+        target.name,
+        image.width,
+        image.height,
+        target.stat().st_size // 1024,
+    )
+    return f"{settings.media_public_base}/work/{target.name}", image.width, image.height

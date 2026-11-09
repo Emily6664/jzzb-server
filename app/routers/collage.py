@@ -234,7 +234,12 @@ def generate_image(
         try:
             remote = image_generation.generate(payload.image, theme, work_id)
             if remote.startswith("https://"):
-                image_url = remote
+                # 服务商给的是外链：下载回本地，统一用我们的域名下发
+                try:
+                    image_url, width, height = illustration.mirror_remote(remote, work_id)
+                except Exception as exc:
+                    logger.warning("镜像外部图片失败，直接使用原地址：%s", exc)
+                    image_url = remote
             elif remote.startswith("/media/"):
                 relative = remote[len("/media/") :]
                 width, height = illustration.image_size(settings.media_dir / relative)
@@ -254,8 +259,11 @@ def generate_image(
             logger.exception("家庭插画合成失败：%s", exc)
             raise BizError(CODE_SERVER_ERROR, "插画生成失败，请稍后重试")
 
+    # 生成即入库并标记为已保存：图片已经落在 media/work，作品列表立即可见；
+    # 前端后面再调 /collage/works 只是补标题（幂等更新）。
+    stamp = now_text()
     conn.execute(
-        "INSERT INTO collage_works (work_id,user_id,template_id,image_url,title,width,height,item_count,layout_json,saved,created_at,saved_at) VALUES (?,?,?,?,?,?,?,0,'[]',0,?,NULL)",
+        "INSERT INTO collage_works (work_id,user_id,template_id,image_url,title,width,height,item_count,layout_json,saved,created_at,saved_at) VALUES (?,?,?,?,?,?,?,0,'[]',1,?,?)",
         (
             work_id,
             str(user["user_id"]),
@@ -264,7 +272,8 @@ def generate_image(
             "家庭专属插画",
             width,
             height,
-            now_text(),
+            stamp,
+            stamp,
         ),
     )
 

@@ -693,15 +693,15 @@ curl -X POST http://127.0.0.1:8000/api/goods/orders \
 
 - **入参**：`{ "templateId": "tpl-childlike", "image": "data:image/png;base64,..." }`，
   `image` 是画布导出图（`exportPoster()` 的结果），解码后上限 12MB。
-- **返回**：`{ workId, imageUrl, width, height }`；前端接着调 `POST /collage/works` 存成作品，
-  再 `wx.downloadFile` 拿图预览。
+- **返回**：`{ workId, imageUrl, width, height }`。图片同时写进 `collage_works` 表（`saved=1`），
+  所以生成完立刻能在「我的作品」里看到；前端随后调 `POST /collage/works` 只是补标题（幂等）。
 
 两种实现，按配置自动选择：
 
 | 配置 | 行为 |
 | --- | --- |
 | `IMAGE_API_KEY` 留空（**默认**） | **本地合成**：Pillow 把拼贴成图装进 1080×1440 的海报，用 `media/material/1..4.jpg` 做模糊底纹（童趣取 1/2 的彩稿，复古取 3/4 的线稿）。离线、免费、约 1 秒出图 |
-| 配了 `IMAGE_API_KEY` | 先调外部图生图（OpenAI 兼容：`gpt-image-*` 走 `/images/edits`，其余走 `/chat/completions`）；失败或超时**自动回落**本地合成，不会让用户白等 |
+| 配了 `IMAGE_API_KEY` | 调外部图生图（OpenAI 兼容：`gpt-image-*` 走 `/images/edits`，其余走 `/chat/completions`）；拿到结果后**下载回本地 `media/work/`**，统一用我们的域名下发（省掉图片域名的 downloadFile 白名单，也不会因外链过期裂图）；失败或超时**自动回落**本地合成 |
 
 要点：
 
