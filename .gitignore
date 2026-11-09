@@ -23,3 +23,8 @@ data/
 
 # 运行日志（start.ps1 写入）
 logs/
+
+# 本地上传素材、出图测试产物和开发者私人配置
+input/
+media/work/ai-test-*
+project.private.config.json

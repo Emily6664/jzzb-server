@@ -1,0 +1,267 @@
+/* pages/collage/collage.wxss —— AI 家庭拼贴（墨印世界）
+ * 版面顺序：页头 → 模板 → 画布 → 选中条 → 素材 → 动作。
+ * 分组全靠发丝线，不用卡片；朱红只出现在选中项和主按钮上。
+ */
+
+.page {
+  padding-top: 24rpx;
+}
+
+/* ==================== 页头 ==================== */
+.head {
+  padding-bottom: 22rpx;
+}
+
+.head-title {
+  font-family: var(--font-display);
+  font-size: var(--f-title);
+  line-height: 1.2;
+  letter-spacing: var(--track);
+  color: var(--ink);
+}
+
+.head-sub {
+  margin-top: 10rpx;
+  font-size: var(--f-micro);
+  letter-spacing: 1rpx;
+  color: var(--mute);
+}
+
+.head-rule {
+  height: var(--hair);
+  background: var(--rule);
+}
+
+/* ==================== 区段通用 ==================== */
+.sec {
+  padding: 22rpx 0 0;
+}
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 14rpx;
+}
+
+.sec-note {
+  font-size: var(--f-micro);
+  color: var(--mute);
+}
+
+/* ==================== 模板 ==================== */
+.tpl-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.tpl-row {
+  display: inline-flex;
+  gap: 16rpx;
+  padding-bottom: 4rpx;
+}
+
+.tpl {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 156rpx;
+  padding: 14rpx 18rpx;
+  border: var(--hair) solid var(--rule-2);
+}
+
+.tpl-hover {
+  background: var(--paper-2);
+}
+
+/* 选中：墨底纸字，不用圆角胶囊 */
+.tpl-on {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.tpl-name {
+  font-family: var(--font-display);
+  font-size: 26rpx;
+  letter-spacing: 1rpx;
+  color: var(--ink);
+}
+
+.tpl-theme {
+  font-size: var(--f-micro);
+  color: var(--mute);
+}
+
+.tpl-on .tpl-name {
+  color: #f7f3e8;
+}
+
+.tpl-on .tpl-theme {
+  color: #bdb4a0;
+}
+
+/* ==================== 画布 ==================== */
+.canvas-area {
+  position: relative;
+  margin-top: 22rpx;
+  padding-top: 4rpx;
+  border-top: var(--hair) solid var(--rule);
+}
+
+.canvas-loading {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  z-index: 2;
+  text-align: center;
+}
+
+.canvas-loading-text {
+  font-size: var(--f-small);
+  letter-spacing: 2rpx;
+  color: var(--mute);
+}
+
+.canvas-tip {
+  margin-top: 14rpx;
+  font-size: var(--f-micro);
+  text-align: center;
+  color: var(--mute);
+}
+
+/* ==================== 选中条 ==================== */
+/* 紧接画布下方，上边线借用画布下边缘，读作「这块地方的状态」，
+   而不是浮在页面中间的一行注释。 */
+.picked {
+  margin-top: 18rpx;
+  padding: 18rpx 0 20rpx;
+  border-top: var(--hair) solid var(--rule);
+}
+
+.picked-head {
+  display: flex;
+  align-items: center;
+}
+
+/* 小朱点：呼应首页点位的圆点，是「当前项」的标记 */
+.picked-dot {
+  flex-shrink: 0;
+  width: 10rpx;
+  height: 10rpx;
+  margin-right: 10rpx;
+  background: var(--zhu);
+  border-radius: 50%;
+}
+
+.picked-name {
+  font-family: var(--font-display);
+  font-size: 28rpx;
+  letter-spacing: 1rpx;
+  color: var(--ink);
+}
+
+.picked-desc {
+  margin-top: 8rpx;
+  font-size: var(--f-micro);
+  line-height: 1.65;
+  color: var(--mute);
+}
+
+/* 动作单独一行右对齐：名称和描述占满宽度，长描述不会跟按钮挤 */
+.picked-acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+
+/* ==================== 素材 ==================== */
+.mat-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.mat-list {
+  display: inline-flex;
+  gap: 16rpx;
+  padding-bottom: 4rpx;
+}
+
+.mat {
+  display: flex;
+  flex-direction: column;
+  width: 124rpx;
+}
+
+.mat-hover {
+  opacity: 0.7;
+}
+
+.mat-img {
+  width: 124rpx;
+  height: 124rpx;
+  border: var(--hair) solid var(--rule-2);
+}
+
+.mat-img-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-2);
+}
+
+.mat-img-text {
+  padding: 0 8rpx;
+  font-size: var(--f-micro);
+  line-height: 1.35;
+  text-align: center;
+  color: var(--mute);
+}
+
+.mat-name {
+  margin-top: 8rpx;
+  font-size: var(--f-micro);
+  letter-spacing: 1rpx;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+/* ==================== 动作 ==================== */
+.acts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+  margin-top: 30rpx;
+  padding-top: 22rpx;
+  border-top: var(--hair) solid var(--rule);
+}
+
+.acts-main {
+  flex: 1;
+}
+
+.acts-line {
+  width: 100%;
+  margin-top: 18rpx;
+}
+
+.foot-note {
+  margin-top: 20rpx;
+  font-size: var(--f-micro);
+  letter-spacing: 1rpx;
+  text-align: center;
+  color: var(--mute);
+}
+
+/* ==================== 模式补丁 ==================== */
+.ui-mode-elder .tpl { min-width: 200rpx; padding: 18rpx 22rpx; }
+.ui-mode-elder .tpl-name { font-size: 32rpx; }
+.ui-mode-elder .mat { width: 156rpx; }
+.ui-mode-elder .mat-img { width: 156rpx; height: 156rpx; }
+.ui-mode-elder .picked-name { font-size: 32rpx; }
+
+.ui-mode-child .tpl { min-width: 172rpx; }
+.ui-mode-child .mat { width: 132rpx; }
+.ui-mode-child .mat-img { width: 132rpx; height: 132rpx; }

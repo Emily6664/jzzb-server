@@ -1,0 +1,123 @@
+<!-- pages/collage/collage.wxml —— AI 家庭拼贴共创引擎（墨印） -->
+<view class="page {{uiModeClass}}">
+
+  <view class="head">
+    <view class="head-title">一张照片，一间围屋</view>
+    <view class="head-sub">{{activeTemplateName}} · 单指拖动 · 双指缩放{{rotateEnabled ? ' / 旋转' : ''}}</view>
+  </view>
+  <view class="head-rule"></view>
+
+  <!-- ============ 模板 ============ -->
+  <view class="sec">
+    <view class="sec-head">
+      <text class="cap">模板</text>
+      <text class="sec-note">左右滑，点一下换</text>
+    </view>
+
+    <scroll-view class="tpl-scroll" scroll-x="{{true}}">
+      <view class="tpl-row">
+        <view
+          class="tpl {{item.active ? 'tpl-on' : ''}}"
+          wx:for="{{templates}}"
+          wx:key="templateId"
+          data-id="{{item.templateId}}"
+          bindtap="onTemplateTap"
+          hover-class="tpl-hover"
+          aria-role="button"
+          aria-label="切换到模板 {{item.name}}"
+        >
+          <text class="tpl-name">{{item.name}}</text>
+          <text class="tpl-theme">{{item.themeText}}</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <button class="btn-text" bindtap="onPresetTap">一键预置画布内容 →</button>
+  </view>
+
+  <!-- ============ 画布 ============ -->
+  <view class="canvas-area">
+    <view class="canvas-loading" wx:if="{{loading}}">
+      <text class="canvas-loading-text">素材加载中…</text>
+    </view>
+
+    <drag-canvas
+      id="dragCanvas"
+      rotate-enabled="{{rotateEnabled}}"
+      bind:ready="onCanvasReady"
+      bind:select="onCanvasSelect"
+      bind:change="onCanvasChange"
+    />
+
+    <!-- 选中素材：贴着画布的一块信息条，不是浮在下面的一行注释 -->
+    <view class="picked" wx:if="{{selectedMaterialId}}">
+      <view class="picked-head">
+        <text class="picked-dot"></text>
+        <text class="picked-name">{{selectedName}}</text>
+      </view>
+      <view class="picked-desc">{{selectedDesc}}</view>
+      <view class="picked-acts">
+        <button class="mini-btn" bindtap="onPlayAudio">听{{voiceText}}</button>
+        <button class="mini-btn is-danger" bindtap="onDeleteSelected">删除</button>
+      </view>
+    </view>
+
+    <view class="canvas-tip" wx:if="{{rotateEnabled}}">
+      单指拖动 · 双指缩放 / 旋转
+    </view>
+    <view class="canvas-tip" wx:else>
+      单指拖动 · 双指缩放 · 儿童模式已关闭旋转
+    </view>
+  </view>
+
+  <!-- ============ 素材 ============ -->
+  <view class="sec">
+    <view class="sec-head">
+      <text class="cap">素材</text>
+      <text class="sec-note">点一下加入画布</text>
+    </view>
+
+    <scroll-view class="mat-scroll" scroll-x="{{true}}">
+      <view class="mat-list">
+        <view
+          class="mat"
+          wx:for="{{materials}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="onMaterialTap"
+          hover-class="mat-hover"
+          aria-role="button"
+          aria-label="加入素材 {{item.name}}"
+        >
+          <image
+            wx:if="{{!failedImages[item.id]}}"
+            class="mat-img"
+            src="{{item.imageUrl}}"
+            mode="aspectFit"
+            data-id="{{item.id}}"
+            binderror="onImageError"
+          />
+          <view wx:else class="mat-img mat-img-empty">
+            <text class="mat-img-text">{{item.name}}</text>
+          </view>
+          <text class="mat-name">{{item.name}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- ============ 操作 ============ -->
+  <view class="acts">
+    <button class="btn-text" bindtap="onClear">清空画布</button>
+    <button class="btn-zhu acts-main" loading="{{saving}}" disabled="{{saving}}" bindtap="onGenerateAI">AI 生成家庭插画</button>
+    <button class="btn-zhu acts-main" loading="{{saving}}" disabled="{{saving}}" bindtap="onSavePoster">
+      生成海报并保存
+    </button>
+  </view>
+
+  <button class="btn-line acts-line" bindtap="onCustomGoods" loading="{{navigating}}">
+    定制文创 · 用这张图去挑商品 →
+  </button>
+
+  <view class="foot-note">画布上共 {{itemCount}} 个素材 · 当前语音 {{voiceText}}</view>
+</view>

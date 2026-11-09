@@ -1,0 +1,9 @@
+{
+  "usingComponents": {
+    "drag-canvas": "/components/drag-canvas/drag-canvas"
+  },
+  "navigationBarTitleText": "AI 拼贴",
+  "navigationBarBackgroundColor": "#f2efe4",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#f2efe4"
+}

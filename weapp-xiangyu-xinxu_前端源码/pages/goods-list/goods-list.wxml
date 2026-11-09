@@ -1,0 +1,55 @@
+<!-- pages/goods-list/goods-list.wxml —— 文创商品（墨印） -->
+<view class="page {{uiModeClass}}">
+
+  <view class="head">
+    <view class="head-title">带回家的</view>
+    <view class="head-sub">围屋屋檐 · 擂茶 · 花灯 · 共 {{list.length}} 件</view>
+    <view class="head-sub" wx:if="{{spotId}}">只看点位 {{spotId}} 的文创</view>
+  </view>
+  <view class="head-rule"></view>
+
+  <view class="state" wx:if="{{loading}}">
+    <text class="state-text">商品加载中…</text>
+  </view>
+
+  <view class="list" wx:elif="{{list.length > 0}}">
+    <view
+      class="row"
+      wx:for="{{list}}"
+      wx:key="goodsId"
+      data-id="{{item.goodsId}}"
+      bindtap="onCardTap"
+      hover-class="row-hover"
+      aria-role="button"
+      aria-label="{{item.name}}，{{item.priceText}}"
+    >
+      <image
+        wx:if="{{!failedImages[item.goodsId]}}"
+        class="row-img"
+        src="{{item.coverUrl}}"
+        mode="aspectFill"
+        data-id="{{item.goodsId}}"
+        binderror="onImageError"
+      />
+      <view wx:else class="row-img row-img-empty">
+        <text class="row-img-text">{{item.name}}</text>
+      </view>
+
+      <view class="row-main">
+        <view class="row-name">{{item.name}}</view>
+        <view class="row-summary">{{item.summary}}</view>
+        <view class="row-foot">
+          <text class="row-price">{{item.priceText}}</text>
+          <text class="row-go">去看看 →</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="state" wx:else>
+    <view class="state-text">这里还没有商品</view>
+    <view class="state-tip">换个点位，或回首页看全部文创</view>
+  </view>
+
+  <view class="error" wx:if="{{errorText}}">{{errorText}}</view>
+</view>

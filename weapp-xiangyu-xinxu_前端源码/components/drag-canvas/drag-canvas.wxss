@@ -1,0 +1,18 @@
+/* components/drag-canvas/drag-canvas.wxss —— 拼贴画布组件样式
+ * 画布尺寸由 js 计算后以 px 写在 style 上，这里只负责外观与容器。
+ * 墨印世界：直角、墨框、无阴影。
+ */
+.dc-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.dc-canvas {
+  display: block;
+  background: var(--paper-2, #faf7ee);
+  border: 2rpx solid var(--ink, #171410);
+  border-radius: 0;
+  box-shadow: none;
+}

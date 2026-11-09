@@ -1,0 +1,116 @@
+<!-- pages/goods-detail/goods-detail.wxml —— 商品详情 / 文创定制预览 -->
+<view class="page {{uiModeClass}}">
+
+  <view class="loading-row" wx:if="{{loading}}">
+    <text class="loading-text">商品加载中…</text>
+  </view>
+
+  <view class="content" wx:elif="{{detail}}">
+
+    <!-- ============ 定制预览（从拼贴页带 workImage 进来时显示） ============ -->
+    <view class="customize" wx:if="{{workImage}}">
+      <view class="customize-head">
+        <text class="customize-title">文创定制预览</text>
+        <text class="customize-badge">你的作品</text>
+      </view>
+
+      <view class="customize-body">
+        <view class="customize-cell">
+          <image class="customize-img" src="{{workImage}}" mode="aspectFit" />
+          <text class="customize-label">拼贴作品</text>
+        </view>
+        <view class="customize-plus">+</view>
+        <view class="customize-cell">
+          <image class="customize-img" src="{{detail.coverUrl}}" mode="aspectFit" />
+          <text class="customize-label">这件文创</text>
+        </view>
+      </view>
+
+      <view class="customize-tip">
+        下单后，这幅拼贴会印在「{{detail.name}}」上（演示效果）
+      </view>
+    </view>
+
+    <!-- ============ 主信息 ============ -->
+    <view class="hero">
+      <image
+        wx:if="{{!coverFailed}}"
+        class="hero-img"
+        src="{{detail.coverUrl}}"
+        mode="aspectFill"
+        data-src="{{detail.coverUrl}}"
+        bindtap="onPreview"
+        binderror="onCoverError"
+      />
+      <view wx:else class="hero-img hero-img-fallback">
+        <text class="hero-img-text">{{detail.name}}</text>
+      </view>
+
+      <view class="hero-main">
+        <view class="hero-name">{{detail.name}}</view>
+        <view class="hero-summary">{{detail.summary}}</view>
+        <view class="hero-price">{{detail.priceText}}</view>
+      </view>
+    </view>
+
+    <!-- ============ 详情 ============ -->
+    <view class="section">
+      <view class="section-title">商品详情</view>
+      <view class="detail-text">{{detail.detailText}}</view>
+
+      <view class="detail-imgs" wx:if="{{detail.detailImageUrls.length > 0}}">
+        <view
+          class="detail-cell"
+          wx:for="{{detail.detailImageUrls}}"
+          wx:key="*this"
+          wx:for-index="idx"
+        >
+          <image
+            wx:if="{{!failedImages[idx]}}"
+            class="detail-img"
+            src="{{item}}"
+            mode="widthFix"
+            data-src="{{item}}"
+            data-idx="{{idx}}"
+            bindtap="onPreview"
+            binderror="onDetailImageError"
+          />
+          <view wx:else class="detail-img detail-img-fallback">
+            <text class="detail-img-text">详情图占位</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="foot-note">{{canPay ? '支付由微信支付完成。' : '当前为模拟支付，不会产生真实交易。'}}</view>
+  </view>
+
+  <view class="empty" wx:elif="{{!loading}}">
+    <view class="empty-text">没有找到这件商品</view>
+    <button class="btn btn-ghost empty-btn" bindtap="onBackList">去文创列表看看</button>
+  </view>
+
+  <view class="error-text" wx:if="{{errorText}}">{{errorText}}</view>
+
+  <!-- ============ 底部下单条 ============ -->
+  <view class="buy-bar" wx:if="{{detail}}">
+    <view class="buy-addr" bindtap="onGoAddress">
+      <view class="buy-addr-main" wx:if="{{address}}">
+        <text class="buy-addr-name">{{address.name}} {{address.phone}}</text>
+        <text class="buy-addr-detail">{{addressText}}</text>
+      </view>
+      <text class="buy-addr-empty" wx:else>请添加收货地址</text>
+      <text class="buy-addr-arrow">›</text>
+    </view>
+
+    <view class="buy-row">
+      <view class="buy-price">
+        <text class="buy-label">实付</text>
+        <text class="buy-amount">{{detail.priceText}}</text>
+      </view>
+      <button class="btn btn-primary buy-btn" bindtap="onBuy" loading="{{buying}}">
+        {{canPay ? '微信支付' : '立即购买'}}
+      </button>
+    </view>
+  </view>
+</view>

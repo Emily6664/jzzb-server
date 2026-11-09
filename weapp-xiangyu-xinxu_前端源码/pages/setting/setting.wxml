@@ -1,0 +1,40 @@
+<!-- pages/setting/setting.wxml —— 设置页 -->
+<view class="page {{uiModeClass}}">
+  <view class="section">
+    <view class="section-title">界面模式</view>
+    <view
+      class="option {{uiMode === item.value ? 'option-active' : ''}}"
+      hover-class="option-hover"
+      wx:for="{{uiModeOptions}}"
+      wx:key="value"
+      data-value="{{item.value}}"
+      bindtap="onUiModeTap"
+    >
+      <view class="option-main">
+        <view class="option-label">{{item.label}}</view>
+        <view class="option-desc">{{item.desc}}</view>
+      </view>
+      <view class="option-check" wx:if="{{uiMode === item.value}}">已选</view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">语音</view>
+    <view
+      class="option {{voiceType === item.value ? 'option-active' : ''}}"
+      hover-class="option-hover"
+      wx:for="{{voiceOptions}}"
+      wx:key="value"
+      data-value="{{item.value}}"
+      bindtap="onVoiceTap"
+    >
+      <view class="option-main">
+        <view class="option-label">{{item.label}}</view>
+        <view class="option-desc">{{item.desc}}</view>
+      </view>
+      <view class="option-check" wx:if="{{voiceType === item.value}}">已选</view>
+    </view>
+  </view>
+
+  <view class="foot-tip">选择后自动保存，并立即应用到这个页面的字号与按钮尺寸。</view>
+</view>

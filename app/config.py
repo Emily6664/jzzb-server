@@ -86,6 +86,12 @@ class Settings(BaseSettings):
     # 媒体文件根目录；服务启动时挂到 /media。目录不存在会自动创建。
     media_dir: Path = BASE_DIR / "media"
 
+    # ---------- 图生图（OpenAI 兼容聊天协议） ----------
+    image_api_base: str = "https://aiapi.shiwuyan.cn/v1"
+    image_api_key: str = ""
+    image_model: str = "gpt-image-2"
+    image_timeout_seconds: float = 100
+
     # ---------- 微信小程序 ----------
     wechat_appid: str = ""
     wechat_secret: str = ""

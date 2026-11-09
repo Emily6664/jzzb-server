@@ -1,0 +1,91 @@
+<!-- pages/local-map/local-map.wxml —— 围山手绘动态地图 -->
+<view class="page {{uiModeClass}}">
+
+  <view class="map-head">
+    <view class="map-title">围山地图</view>
+    <view class="map-sub">点一点小狗，看看它守着的地方</view>
+    <view class="map-mode">{{uiModeText}} · 共 {{markers.length}} 个点位</view>
+  </view>
+
+  <!-- ============ 地图舞台 ============ -->
+  <view class="stage-wrap">
+    <view class="map-stage" id="mapStage" style="width:{{stageW}}px; height:{{stageH}}px;">
+      <image class="map-img" src="{{mapImageUrl}}" mode="scaleToFill" binderror="onMapError" />
+
+      <view class="map-fallback" wx:if="{{mapFailed}}">
+        <text class="map-fallback-text">手绘底图未加载</text>
+      </view>
+
+      <!-- 标定不可靠时：圈住离你最近的那个点位，不假装精确落点 -->
+      <view
+        class="near-ring"
+        wx:if="{{nearPoint && userMode === 'near'}}"
+        style="left:{{nearPoint.left}}px; top:{{nearPoint.top}}px;"
+      ></view>
+
+      <view
+        class="spot"
+        wx:for="{{markers}}"
+        wx:key="spotId"
+        style="left:{{item.left}}px; top:{{item.top}}px;"
+        data-id="{{item.spotId}}"
+        bindtap="onSpotTap"
+      >
+        <view class="spot-body">
+          <image class="spot-dog" src="{{dogImageUrl}}" mode="aspectFit" />
+        </view>
+        <view class="spot-name">{{item.name}}</view>
+      </view>
+
+      <!-- 你在这里（标定可靠时才出现） -->
+      <view class="me" wx:if="{{userPoint}}" style="left:{{userPoint.left}}px; top:{{userPoint.top}}px;">
+        <view class="me-ring"></view>
+        <view class="me-dot"></view>
+      </view>
+    </view>
+
+    <view class="stage-tip" wx:if="{{loading}}">点位加载中…</view>
+    <view class="stage-tip" wx:elif="{{markers.length === 0}}">暂时没有点位</view>
+    <view class="stage-tip" wx:else>点狗狗看介绍，弹窗里可以直接导航</view>
+
+    <!-- 定位状态 + 重新定位 -->
+    <view class="locate-row">
+      <text class="locate-tag" wx:if="{{locateTag}}">{{locateTag}}</text>
+      <text class="locate-text">{{locateText}}</text>
+      <text class="locate-act" wx:if="{{locateActText}}" bindtap="onRelocate">{{locateActText}}</text>
+    </view>
+  </view>
+
+  <!-- ============ 点位弹窗 ============ -->
+  <view class="mask" wx:if="{{activeSpot}}" bindtap="onClosePopup" catchtouchmove="noop">
+    <view class="sheet" catchtap="stopBubble">
+      <view class="sheet-head">
+        <view class="sheet-title">{{activeSpot.name}}</view>
+        <view class="sheet-close" bindtap="onClosePopup">关闭</view>
+      </view>
+
+      <image
+        wx:if="{{!sheetImageFailed}}"
+        class="sheet-img"
+        src="{{activeSpot.imageUrl}}"
+        mode="aspectFill"
+        bindtap="onPreviewImage"
+        binderror="onSheetImageError"
+      />
+      <view wx:else class="sheet-img sheet-img-fallback">
+        <text class="sheet-img-text">{{activeSpot.name}}</text>
+      </view>
+
+      <view class="sheet-desc">{{activeSpot.description}}</view>
+
+      <view class="sheet-meta">经纬度 {{activeSpot.latitude}}, {{activeSpot.longitude}}</view>
+
+      <view class="sheet-actions">
+        <button class="btn btn-ghost" bindtap="onClosePopup">关闭</button>
+        <button class="btn btn-primary" bindtap="onNavigate">导航到这里</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="error-text" wx:if="{{errorText}}">{{errorText}}</view>
+</view>

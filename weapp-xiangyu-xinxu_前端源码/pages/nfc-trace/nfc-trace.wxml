@@ -1,0 +1,126 @@
+<!-- pages/nfc-trace/nfc-trace.wxml —— NFC 溯源 -->
+<view class="page {{uiModeClass}}">
+
+  <!-- ============ 标题 ============ -->
+  <view class="hero">
+    <view class="hero-title">NFC 溯源</view>
+    <view class="hero-sub">碰一碰标签，听一段老故事</view>
+    <view class="hero-mode">{{uiModeText}} · {{voiceText}}朗读</view>
+  </view>
+
+  <!-- ============ 触碰 NFC ============ -->
+  <view class="touch-card" wx:if="{{nfcSupported}}">
+    <view class="touch-status">
+      {{reading ? '正在等待触碰，请把手机背面贴近 NFC 贴纸…' : '把手机背面靠近 NFC 贴纸即可读取'}}
+    </view>
+    <button class="btn btn-primary" bindtap="onTouchTap" disabled="{{reading}}">
+      {{reading ? '正在读取…' : '触碰 NFC 标签'}}
+    </button>
+    <button class="btn btn-ghost" wx:if="{{reading}}" bindtap="onCancelRead">取消</button>
+  </view>
+
+  <view class="touch-card touch-card-off" wx:elif="{{nfcReady}}">
+    <view class="touch-status">当前环境无法在页面内读卡</view>
+    <view class="touch-reason">{{nfcReason}}</view>
+    <view class="touch-reason">可以扫码查看故事；标签从小程序外唤起需单独配置。</view>
+  </view>
+
+  <!-- ============ 演示 / 扫码 ============ -->
+  <view class="block">
+    <view class="block-head">
+      <text class="block-title">读取标签</text>
+      <text class="block-hint">答辩演示可输 tagId</text>
+    </view>
+
+    <view class="demo-row">
+      <input
+        class="demo-input"
+        value="{{demoTagId}}"
+        placeholder="输入 tagId，如 NFC-TAG-0001"
+        confirm-type="done"
+        bindinput="onDemoInput"
+        bindconfirm="onDemoTap"
+      />
+      <button class="btn btn-mini btn-primary" bindtap="onDemoTap">模拟读取</button>
+    </view>
+
+    <view class="chip-row">
+      <view
+        class="chip"
+        wx:for="{{demoTags}}"
+        wx:key="*this"
+        data-tag="{{item}}"
+        bindtap="onDemoChipTap"
+      >
+        {{item}}
+      </view>
+    </view>
+
+    <button class="btn btn-outline" bindtap="onScanTap">扫码读取标签</button>
+  </view>
+
+  <!-- ============ 加载中 ============ -->
+  <view class="loading-row" wx:if="{{loading}}">
+    <text class="loading-text">正在读取溯源数据…</text>
+  </view>
+
+  <!-- ============ 溯源结果 ============ -->
+  <view class="result" wx:if="{{trace}}">
+    <view class="result-head">
+      <view class="result-title">{{trace.title}}</view>
+      <view class="result-meta">标签 {{trace.tagId}}</view>
+    </view>
+
+    <view class="audio-bar">
+      <view class="audio-text">
+        <text class="audio-title">故事朗读</text>
+        <text class="audio-sub">{{voiceText}}{{playing ? ' · 播放中' : ''}}</text>
+      </view>
+      <button class="btn btn-mini btn-primary" bindtap="onToggleAudio">
+        {{playing ? '停止' : '播放'}}
+      </button>
+    </view>
+
+    <view class="story">{{trace.storyText}}</view>
+
+    <block wx:if="{{trace.historyImageUrls.length > 0}}">
+      <view class="section-title">史料图片</view>
+      <view class="history-grid">
+        <view
+          class="history-cell"
+          wx:for="{{trace.historyImageUrls}}"
+          wx:key="*this"
+          wx:for-index="idx"
+        >
+          <image
+            wx:if="{{!historyFailed[idx]}}"
+            class="history-img"
+            src="{{item}}"
+            mode="aspectFill"
+            data-src="{{item}}"
+            data-idx="{{idx}}"
+            bindtap="onPreviewImage"
+            binderror="onHistoryImageError"
+          />
+          <view wx:else class="history-img history-fallback">
+            <text class="history-fallback-text">史料图占位</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="link-row">
+      <button class="btn btn-ghost" bindtap="onViewSpot">查看地图点位</button>
+      <button class="btn btn-ghost" bindtap="onViewGoods">购买同款文创</button>
+    </view>
+  </view>
+
+  <!-- ============ 空态 ============ -->
+  <view class="empty" wx:if="{{!trace && !loading}}">
+    <view class="empty-text">还没有读取标签</view>
+    <view class="empty-tip">碰一碰 NFC 贴纸，或在上方输 tagId / 扫码</view>
+  </view>
+
+  <!-- ============ 错误提示 ============ -->
+  <view class="error-text" wx:if="{{errorText}}">{{errorText}}</view>
+</view>

@@ -1,0 +1,41 @@
+<!-- pages/my-works/my-works.wxml —— 我的作品 -->
+<view class="page {{uiModeClass}}">
+  <view class="page-title">我的作品</view>
+
+  <view class="empty" wx:if="{{loaded && works.length === 0}}">
+    <view class="empty-text">还没有保存过作品</view>
+    <view class="empty-tip">去拼贴页拼一张，生成海报后就会出现在这里</view>
+    <button class="btn btn-primary" bindtap="onGoCollage">去做一张拼贴</button>
+  </view>
+
+  <view class="work-list" wx:else>
+    <view
+      class="work-card"
+      wx:for="{{works}}"
+      wx:key="workId"
+      data-path="{{item.imagePath}}"
+      data-id="{{item.workId}}"
+      bindtap="onPreview"
+      bindlongpress="onDelete"
+    >
+      <image
+        wx:if="{{!failedImages[item.workId]}}"
+        class="work-img"
+        src="{{item.imagePath}}"
+        mode="aspectFill"
+        data-id="{{item.workId}}"
+        binderror="onWorkImageError"
+      />
+      <view wx:else class="work-img work-img-fallback">
+        <text class="work-img-text">作品图</text>
+      </view>
+      <view class="work-meta">
+        <text class="work-name">{{item.templateName}}</text>
+        <text class="work-desc">{{item.itemCount}} 个素材 · 长按可删除</text>
+        <text class="work-time">{{item.createdAt}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="foot-hint" wx:if="{{works.length > 0}}">长按作品卡片可以删除</view>
+</view>

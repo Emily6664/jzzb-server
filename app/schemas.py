@@ -79,3 +79,8 @@ class LoginRequest(ApiModel):
     phone_code: str | None = Field(
         default=None, alias="phoneCode", description="getPhoneNumber 回调里的 code"
     )
+
+
+class GenerateImageRequest(ApiModel):
+    template_id: str = Field(alias="templateId", min_length=1, max_length=64)
+    image: str = Field(min_length=1, max_length=12000000, description="PNG/JPEG/WebP data URL")

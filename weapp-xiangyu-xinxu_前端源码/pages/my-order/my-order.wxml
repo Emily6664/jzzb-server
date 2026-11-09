@@ -1,0 +1,72 @@
+<!-- pages/my-order/my-order.wxml —— 我的订单 -->
+<view class="page {{uiModeClass}}">
+
+  <view class="head">
+    <view class="head-title">我的订单</view>
+    <view class="head-sub">共 {{orders.length}} 笔 · 全部为模拟订单，未接支付</view>
+  </view>
+
+  <view class="loading-row" wx:if="{{loading}}">
+    <text class="loading-text">订单加载中…</text>
+  </view>
+
+  <view class="list" wx:elif="{{orders.length > 0}}">
+    <view
+      class="order"
+      wx:for="{{orders}}"
+      wx:key="orderId"
+      data-goodsid="{{item.goodsId}}"
+      bindtap="onOrderTap"
+    >
+      <view class="order-top">
+        <text class="order-id">{{item.orderId}}</text>
+        <text class="order-status status-{{item.status}}">{{item.statusText}}</text>
+      </view>
+
+      <view class="order-body">
+        <image
+          wx:if="{{!failedImages[item.orderId]}}"
+          class="order-img"
+          src="{{item.coverUrl}}"
+          mode="aspectFill"
+          data-id="{{item.orderId}}"
+          binderror="onImageError"
+        />
+        <view wx:else class="order-img order-img-fallback">
+          <text class="order-img-text">{{item.goodsName}}</text>
+        </view>
+
+        <view class="order-main">
+          <view class="order-name">{{item.goodsName}}</view>
+          <view class="order-spec">{{item.priceText}} × {{item.count}}</view>
+          <view class="order-time">{{item.createdAt}}</view>
+        </view>
+
+        <view class="order-amount">
+          <text class="order-amount-label">实付</text>
+          <text class="order-amount-text">{{item.totalText}}</text>
+        </view>
+      </view>
+
+      <view class="order-tag" wx:if="{{item.simulated}}">本次模拟下单</view>
+
+      <view class="order-paybar" wx:if="{{item._local && item.status === 'unpaid'}}">
+        <text class="order-paytip">订单待付款</text>
+        <button
+          class="order-paybtn"
+          data-id="{{item.orderId}}"
+          loading="{{payingId === item.orderId}}"
+          catchtap="onPay"
+        >去支付</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty" wx:else>
+    <view class="empty-text">还没有订单</view>
+    <view class="empty-tip">去文创商城挑一件，下单后会出现在这里</view>
+    <button class="btn btn-primary empty-btn" bindtap="onGoGoods">去逛文创</button>
+  </view>
+
+  <view class="error-text" wx:if="{{errorText}}">{{errorText}}</view>
+</view>
