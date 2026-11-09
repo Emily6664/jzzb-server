@@ -421,7 +421,23 @@ curl -I https://你的域名/media/goods/1-1.png    # 200 + image/png
 curl -s https://你的域名/api/goods/list | head -c 120   # coverUrl 已是新域名
 ```
 
-`/media` 由 FastAPI 的 `StaticFiles` 提供，支持 `Range` 请求，音频可以边下边播。
+`/media` 由 FastAPI 的 `StaticFiles` 子类提供，支持 `Range` 请求，音频可以边下边播。
+
+**缓存策略**（`MEDIA_CACHE_SECONDS`）：
+
+| 值 | 响应头 | 效果 |
+| --- | --- | --- |
+| `0`（默认） | `cache-control: no-store, no-cache, must-revalidate, max-age=0`，并且**去掉 ETag / Last-Modified** | 每次都 200 + 完整内容，永远不会出现 304 |
+| `>0`（如 `86400`） | `cache-control: public, max-age=N`，保留 ETag | 允许客户端缓存并走 304 协商，省流量 |
+
+默认关闭的理由：`304 Not Modified` 本身是正确行为（客户端有缓存、服务端确认没变），
+但微信开发者工具/部分真机基础库对图片 304 的处理不一致——服务端日志明明是 304，
+页面上却没图，排查成本很高。联调阶段用「每次 200」最确定；上线稳定后再按需要开缓存。
+
+```bash
+curl -I http://127.0.0.1:8000/media/goods/1-1.png
+# 期望：200（never 304）+ cache-control: no-store...
+```
 
 **什么时候才值得上 CDN / 对象存储**：素材体积大、并发高、需要就近加速或省服务器带宽。
 现在这个体量（几十张图、几段音频）服务直出完全够用；将来换 CDN 只需要改 `MEDIA_BASE_URL`，

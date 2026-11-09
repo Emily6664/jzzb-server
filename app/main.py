@@ -16,7 +16,6 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
@@ -31,6 +30,7 @@ from .errors import (
     CODE_UNAUTHORIZED,
     BizError,
 )
+from .media_static import MediaStaticFiles
 from .routers import collage, goods, health, maps, nfc, notify, user
 
 logger = logging.getLogger(__name__)
@@ -247,14 +247,22 @@ def _install_media(app: FastAPI, settings: Settings) -> None:
         logger.warning("媒体目录不可用，跳过 /media 挂载：%s（%s）", directory, exc)
         return
 
-    static_files = StaticFiles(directory=str(directory))
+    static_files = MediaStaticFiles(
+        directory=str(directory),
+        cache_seconds=settings.media_cache_seconds,
+    )
     app.mount("/media", static_files, name="media")
 
     api_media_path = f"{settings.api_prefix}/media" if settings.api_prefix else "/media"
     if api_media_path != "/media":
         app.mount(api_media_path, static_files, name="api-media")
 
-    logger.info("媒体目录已挂载：/media 与 %s -> %s", api_media_path, directory)
+    cache_note = (
+        f"缓存 {settings.media_cache_seconds}s（允许 304）"
+        if settings.media_cache_seconds > 0
+        else "禁用缓存（每次都 200，不返回 304）"
+    )
+    logger.info("媒体目录已挂载：/media 与 %s -> %s｜%s", api_media_path, directory, cache_note)
 
 
 def create_app() -> FastAPI:
