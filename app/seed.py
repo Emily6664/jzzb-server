@@ -128,6 +128,8 @@ def _insert_tags(conn: sqlite3.Connection) -> int:
 
 def _insert_goods(conn: sqlite3.Connection) -> int:
     for index, item in enumerate(GOODS):
+        # sortOrder 决定列表展示顺序（商品素材编号 1..N），没写就按列表顺序
+        sort_order = int(item.get("sortOrder", index))
         conn.execute(
             """
             INSERT OR IGNORE INTO goods
@@ -145,7 +147,7 @@ def _insert_goods(conn: sqlite3.Connection) -> int:
                 dumps(item["detailImageUrls"]),
                 item["spotId"],
                 int(item.get("stock", 100)),
-                index,
+                sort_order,
             ),
         )
     return len(GOODS)

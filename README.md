@@ -371,8 +371,8 @@ UI 类（1Panel / 宝塔 / 其他带面板的反代工具）：新建反向代�
 挂到了 `/media`：
 
 ```
-接口返回   https://你的域名/media/goods/goods-01-cover.png
-磁盘文件   server/media/goods/goods-01-cover.png
+接口返回   https://你的域名/media/goods/1-1.png
+磁盘文件   server/media/goods/1-1.png
 ```
 
 配置只需要一行，然后把文件按目录放进去：
@@ -383,20 +383,41 @@ MEDIA_BASE_URL=https://你的域名/media
 
 ```
 server/media/
-├─ goods/       商品封面与详情图      goods-01-cover.png, goods-01-detail-01.jpg …
-├─ spot/        手绘地图点位配图      spot-01.png …
-├─ template/    拼贴模板封面          tpl-childlike-cover.png …
-├─ material/    拼贴素材（透明底 PNG）mat-childlike-01.png …
+├─ goods/      商品图：{n}-1 封面，{n}-2 / {n}-3 详情    1-1.png … 5-3.png
+├─ spot/       手绘地图点位配图      spot-01.png …
+├─ template/   拼贴模板封面          tpl-childlike-cover.png …
+├─ material/   拼贴素材（透明底 PNG）mat-childlike-01.png …
 ├─ audio/      普通话 / 客家话音频     mat-childlike-01-mandarin.mp3 …
-├─ nfc/         史料图片              NFC-TAG-0001-history-01.jpg …
-└─ work/        拼贴成图              work-20251103210512-4821.png …
+├─ nfc/        史料图片              NFC-TAG-0001-history-01.jpg …
+└─ work/       拼贴成图              work-20251103210512-4821.png
 ```
 
-文件名要和 `app/seed_data.py` 里的地址对上（就是 `mock/` 里那批名字）。验证：
+商品图按「商品序号-图序号」命名：`n-1` 封面，`n-2`、`n-3` 详情长图（按数组顺序纵向渲染）。
+**商品序号和 goodsId 不是一回事**，映射写在 `app/seed_data.py` 顶部，同时决定列表展示顺序：
+
+| 素材编号 | 商品 | goodsId | 列表位置 |
+| --- | --- | --- | --- |
+| 1 | 客家围屋冰箱贴 | `goods-01` | 第 1 个 |
+| 2 | 擂茶礼盒 | `goods-03` | 第 2 个 |
+| 3 | 童趣拼贴明信片套装 | `goods-02` | 第 3 个 |
+| 4 | 土楼手绘帆布袋 | `goods-04` | 第 4 个 |
+| 5 | 客家花灯书签 | `goods-05` | 第 5 个 |
+
+加第 6 个商品：文件放成 `6-1.png`、`6-2.png`…，在 `seed_data.py` 里补一条
+`"coverUrl": _goods_cover(6), "detailImageUrls": _goods_details(6), "sortOrder": 6`；
+详情图不是两张时用 `_goods_details(6, count=3)`。
+
+改完种子要重新导入（`INSERT OR IGNORE` 不会覆盖已有行）：
 
 ```bash
-curl -I https://你的域名/media/goods/goods-01-cover.png    # 200 + image/png
-curl -s https://你的域名/api/goods/list | head -c 120       # coverUrl 已是新域名
+.venv/bin/python -m app.seed --force      # Windows: .venv\Scripts\python.exe -m app.seed --force
+```
+
+验证：
+
+```bash
+curl -I https://你的域名/media/goods/1-1.png    # 200 + image/png
+curl -s https://你的域名/api/goods/list | head -c 120   # coverUrl 已是新域名
 ```
 
 `/media` 由 FastAPI 的 `StaticFiles` 提供，支持 `Range` 请求，音频可以边下边播。

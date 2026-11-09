@@ -236,89 +236,105 @@ NFC_TAGS: list[dict] = [
 
 # ==================== 3.9 / 3.10 文创商品 ====================
 # stock 是扩展字段（文档 5.4 允许新增），默认给足。
+#
+# 【图片素材编号】server/media/goods/ 下的文件按「商品序号-图序号」命名：
+#   {n}-1 封面，{n}-2、{n}-3 详情长图（按数组顺序纵向渲染）
+# 商品序号（N）就是列表展示顺序，用 sortOrder 控制；goodsId 是历史 ID 不跟着改，
+# 因为 NFC 标签、订单快照都在引用它：
+#   1 -> goods-01 客家围屋冰箱贴
+#   2 -> goods-03 擂茶礼盒
+#   3 -> goods-02 童趣拼贴明信片套装
+#   4 -> goods-04 土楼手绘帆布袋
+#   5 -> goods-05 客家花灯书签
+
+_GOODS_IMAGE_BASE = "https://cdn.example.com/xiangyu-xinxu/goods"
+
+
+def _goods_cover(index: int) -> str:
+    """第 index 个商品的封面：media/goods/{index}-1.png"""
+    return f"{_GOODS_IMAGE_BASE}/{index}-1.png"
+
+
+def _goods_details(index: int, count: int = 2) -> list[str]:
+    """第 index 个商品的详情图：{index}-2.png、{index}-3.png …；图片多了就调大 count。"""
+    return [f"{_GOODS_IMAGE_BASE}/{index}-{n}.png" for n in range(2, count + 2)]
+
 
 GOODS: list[dict] = [
     {
         "goodsId": "goods-01",
         "name": "客家围屋冰箱贴",
         "price": 39,
-        "coverUrl": "https://cdn.example.com/xiangyu-xinxu/goods/goods-01-cover.png",
+        "coverUrl": _goods_cover(1),
         "summary": "手工上色的围屋门楼，贴在冰箱上就是一小片故乡。",
         "detailText": (
             "以围屋门楼为原型，树脂材质手工上色，边缘做了旧砖的肌理。"
             "背面是整块软磁，吸力足够。每只都有细微色差，属于手工痕迹。"
         ),
-        "detailImageUrls": [
-            "https://cdn.example.com/xiangyu-xinxu/goods/goods-01-detail-01.jpg",
-            "https://cdn.example.com/xiangyu-xinxu/goods/goods-01-detail-02.jpg",
-        ],
+        "detailImageUrls": _goods_details(1),
         "spotId": "spot-01",
         "stock": 100,
+        "sortOrder": 1,
     },
     {
         "goodsId": "goods-02",
         "name": "童趣拼贴明信片套装",
         "price": 29,
-        "coverUrl": "https://cdn.example.com/xiangyu-xinxu/goods/goods-02-cover.png",
+        "coverUrl": _goods_cover(3),
         "summary": "一套十二张，把拼贴里的小围屋和小花灯寄给朋友。",
         "detailText": (
             "十二张一套，正面是童趣拼贴模板里的素材插画，背面留了足够写字的空白。"
             "纸张 300g，可以直接寄，也可以裱起来。"
         ),
-        "detailImageUrls": [
-            "https://cdn.example.com/xiangyu-xinxu/goods/goods-02-detail-01.jpg",
-        ],
+        "detailImageUrls": _goods_details(3),
         "spotId": "spot-05",
         "stock": 100,
+        "sortOrder": 3,
     },
     {
         "goodsId": "goods-03",
         "name": "擂茶礼盒",
         "price": 128,
-        "coverUrl": "https://cdn.example.com/xiangyu-xinxu/goods/goods-03-cover.png",
+        "coverUrl": _goods_cover(2),
         "summary": "茶叶、花生、芝麻分装备好，配一支竹制茶棍。",
         "detailText": (
             "按老铺的配比分装，茶叶、花生、芝麻各一袋，附竹制茶棍一支和陶钵一只。"
             "开水冲调后按同一方向擂匀，风味最接近现擂的。"
         ),
-        "detailImageUrls": [
-            "https://cdn.example.com/xiangyu-xinxu/goods/goods-03-detail-01.jpg",
-            "https://cdn.example.com/xiangyu-xinxu/goods/goods-03-detail-02.jpg",
-        ],
+        "detailImageUrls": _goods_details(2),
         "spotId": "spot-03",
         "stock": 100,
+        "sortOrder": 2,
     },
     {
         "goodsId": "goods-04",
         "name": "土楼手绘帆布袋",
         "price": 69,
-        "coverUrl": "https://cdn.example.com/xiangyu-xinxu/goods/goods-04-cover.png",
+        "coverUrl": _goods_cover(4),
         "summary": "手绘土楼印在厚帆布上，装得下 A4 和一台相机。",
         "detailText": (
             "16 安加厚帆布，手绘土楼图案丝网印刷，洗过几次也不易掉色。"
             "内里加了一个小口袋，能放钥匙和手机。"
         ),
-        "detailImageUrls": [
-            "https://cdn.example.com/xiangyu-xinxu/goods/goods-04-detail-01.jpg",
-        ],
+        "detailImageUrls": _goods_details(4),
         "spotId": "spot-02",
         "stock": 100,
+        "sortOrder": 4,
     },
     {
         "goodsId": "goods-05",
         "name": "客家花灯书签",
         "price": 19,
-        "coverUrl": "https://cdn.example.com/xiangyu-xinxu/goods/goods-05-cover.png",
+        "coverUrl": _goods_cover(5),
         "summary": "黄铜镂空花灯，夹在书里会透出一小块光。",
         "detailText": (
             "黄铜薄片蚀刻镂空，做成花灯灯面的纹样。单片厚 0.4mm，"
             "夹在书里不会顶出折痕，用久了会有自然的氧化色。"
         ),
-        "detailImageUrls": [
-            "https://cdn.example.com/xiangyu-xinxu/goods/goods-05-detail-01.jpg",
-        ],
+        "detailImageUrls": _goods_details(5),
         "spotId": "spot-04",
         "stock": 100,
+        "sortOrder": 5,
     },
 ]
 
@@ -329,7 +345,7 @@ DEMO_ORDERS: list[dict] = [
         "orderId": "ORD-20250315-0001",
         "goodsId": "goods-01",
         "goodsName": "客家围屋冰箱贴",
-        "coverUrl": "https://cdn.example.com/xiangyu-xinxu/goods/goods-01-cover.png",
+        "coverUrl": _goods_cover(1),
         "price": 39,
         "quantity": 2,
         "totalAmount": 78,
@@ -345,7 +361,7 @@ DEMO_ORDERS: list[dict] = [
         "orderId": "ORD-20250302-0002",
         "goodsId": "goods-03",
         "goodsName": "擂茶礼盒",
-        "coverUrl": "https://cdn.example.com/xiangyu-xinxu/goods/goods-03-cover.png",
+        "coverUrl": _goods_cover(2),
         "price": 128,
         "quantity": 1,
         "totalAmount": 128,
@@ -361,7 +377,7 @@ DEMO_ORDERS: list[dict] = [
         "orderId": "ORD-20250220-0003",
         "goodsId": "goods-05",
         "goodsName": "客家花灯书签",
-        "coverUrl": "https://cdn.example.com/xiangyu-xinxu/goods/goods-05-cover.png",
+        "coverUrl": _goods_cover(5),
         "price": 19,
         "quantity": 3,
         "totalAmount": 57,

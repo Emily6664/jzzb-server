@@ -79,12 +79,17 @@
 **这个项目不需要 CDN。** 图片和音频可以直接由这个服务发出去，和接口共用同一个域名、同一个端口：
 
 ```
-接口返回的地址   https://你的域名/media/goods/goods-01-cover.png
-实际读取的文件   {MEDIA_DIR}/goods/goods-01-cover.png
+接口返回的地址   https://你的域名/media/goods/1-1.png
+实际读取的文件   {MEDIA_DIR}/goods/1-1.png
 ```
 
 也就是说 `MEDIA_BASE_URL=https://你的域名/media`，然后把文件按种子数据里的目录丢进
 `server/media/{goods,spot,audio,template,material,nfc,work}/` 即可，文件名要和 `seed_data.py` 里的一致。
+
+**商品图命名**：`{商品序号}-{图序号}.png` —— `n-1` 是封面，`n-2` / `n-3` 是详情长图。
+序号 1..5 和 goodsId 的对应关系写在 `app/seed_data.py` 顶部
+（1=goods-01 围屋冰箱贴、2=goods-03 擂茶礼盒、3=goods-02 明信片、4=goods-04 帆布袋、5=goods-05 书签），
+列表顺序由同一个文件里的 `sortOrder` 控制。改完要 `python -m app.seed --force` 才会写进库。
 
 什么时候才值得上 CDN / 对象存储：图片音频体积大、访问量大、需要就近加速或省服务器带宽。
 小程序阶段一个人测试，服务直出完全够用。
