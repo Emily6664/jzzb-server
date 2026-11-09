@@ -1,0 +1,159 @@
+/* pages/mine/mine.wxss —— 我的
+ * 字号、按钮尺寸、圆角全部走 app.wxss 的 CSS 变量，切模式时本页自动跟随。
+ */
+.page {
+  padding: 40rpx 32rpx 80rpx;
+}
+
+/* ==================== 个人信息 ==================== */
+.profile {
+  display: flex;
+  align-items: center;
+  margin-bottom: 40rpx;
+  padding: 28rpx 24rpx;
+  background: #ffffff;
+  border: 2rpx solid #e6e1d8;
+  border-radius: var(--btn-radius);
+}
+
+.profile-avatar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 96rpx;
+  height: 96rpx;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: #ffffff;
+  background: #8b6f47;
+  border-radius: 50%;
+}
+
+.profile-main {
+  flex: 1;
+  min-width: 0;
+  margin-left: 24rpx;
+}
+
+.profile-name {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.profile-sub {
+  margin-top: 8rpx;
+  font-size: var(--font-size-sm);
+  color: #7a7468;
+}
+
+.profile-guest .profile-name {
+  color: #544b3d;
+}
+
+.profile-logout {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding: 8rpx 20rpx;
+  font-size: var(--font-size-sm);
+  color: #7a7468;
+  background: #f2eee4;
+  border-radius: 999rpx;
+}
+
+/* 微信手机号一键登录按钮 */
+.login-btn {
+  margin-bottom: 32rpx;
+  background: #8b6f47;
+  border-color: #8b6f47;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+
+/* ==================== 列表 ==================== */
+.cell-group {
+  margin-bottom: 40rpx;
+  background: #ffffff;
+  border: 2rpx solid #e6e1d8;
+  border-radius: var(--btn-radius);
+  overflow: hidden;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  min-height: var(--btn-height);
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+
+.cell + .cell {
+  border-top: 2rpx solid #f2eee4;
+}
+
+.cell-hover {
+  background: #f7f4ec;
+}
+
+.cell-title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-base);
+  color: #2b2b2b;
+}
+
+.cell-value {
+  margin-right: 12rpx;
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+}
+
+.cell-arrow {
+  font-size: var(--font-size-base);
+  color: #c8c0b0;
+}
+
+/* ==================== 按钮 ==================== */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--btn-height);
+  padding: var(--btn-padding);
+  box-sizing: border-box;
+  font-size: var(--btn-font-size);
+  border-radius: var(--btn-radius);
+  border: none;
+  overflow: hidden;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  background: #8b6f47;
+  color: #ffffff;
+}
+
+.foot-hint {
+  margin-top: 24rpx;
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+  text-align: center;
+}
+
+/* ==================== 模式微调 ==================== */
+.ui-mode-elder .profile-avatar {
+  width: 112rpx;
+  height: 112rpx;
+}
+
+.ui-mode-child .profile,
+.ui-mode-child .cell-group,
+.ui-mode-child .btn {
+  border-radius: 44rpx;
+}

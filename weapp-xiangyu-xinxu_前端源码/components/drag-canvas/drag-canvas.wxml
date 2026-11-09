@@ -1,0 +1,14 @@
+<!-- components/drag-canvas/drag-canvas.wxml —— 拼贴画布组件 -->
+<view class="dc-wrap">
+  <canvas
+    id="dc-canvas"
+    class="dc-canvas"
+    type="2d"
+    style="width: {{cssW}}px; height: {{cssH}}px;"
+    disable-scroll="{{true}}"
+    bindtouchstart="onTouchStart"
+    bindtouchmove="onTouchMove"
+    bindtouchend="onTouchEnd"
+    bindtouchcancel="onTouchEnd"
+  ></canvas>
+</view>

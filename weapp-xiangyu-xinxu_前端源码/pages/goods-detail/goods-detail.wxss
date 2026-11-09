@@ -1,0 +1,347 @@
+/* pages/goods-detail/goods-detail.wxss —— 商品详情 / 文创定制预览 */
+.page {
+  padding: 32rpx 32rpx 280rpx;
+}
+
+/* ==================== 定制预览 ==================== */
+.customize {
+  margin-bottom: 28rpx;
+  padding: 24rpx;
+  background: #fdfaf3;
+  border: 2rpx solid #e6e1d8;
+  border-radius: var(--btn-radius);
+}
+
+.customize-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.customize-title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: #8b6f47;
+}
+
+.customize-badge {
+  padding: 4rpx 16rpx;
+  font-size: var(--font-size-sm);
+  color: #ffffff;
+  background: #8b6f47;
+  border-radius: 999rpx;
+}
+
+.customize-body {
+  display: flex;
+  align-items: center;
+}
+
+.customize-cell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.customize-img {
+  width: 100%;
+  height: 220rpx;
+  background: #f2eee4;
+  border-radius: 12rpx;
+}
+
+.customize-plus {
+  flex-shrink: 0;
+  margin: 0 16rpx;
+  font-size: var(--font-size-lg);
+  color: #b9ae97;
+}
+
+.customize-label {
+  margin-top: 10rpx;
+  font-size: var(--font-size-sm);
+  color: #7a7468;
+}
+
+.customize-tip {
+  margin-top: 16rpx;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: #9a9488;
+}
+
+/* ==================== 主信息 ==================== */
+.hero {
+  margin-bottom: 28rpx;
+}
+
+.hero-img {
+  display: block;
+  width: 100%;
+  height: 460rpx;
+  background: #f2eee4;
+  border-radius: var(--btn-radius);
+}
+
+.hero-img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #efe9db;
+}
+
+.hero-img-text {
+  font-size: var(--font-size-base);
+  color: #9a9488;
+}
+
+.hero-main {
+  margin-top: 24rpx;
+}
+
+.hero-name {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.hero-summary {
+  margin-top: 10rpx;
+  font-size: var(--font-size-base);
+  line-height: 1.7;
+  color: #7a7468;
+}
+
+.hero-price {
+  margin-top: 16rpx;
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #b4472f;
+}
+
+/* ==================== 详情 ==================== */
+.section {
+  padding: 24rpx;
+  background: #ffffff;
+  border: 2rpx solid #e6e1d8;
+  border-radius: var(--btn-radius);
+}
+
+.section-title {
+  margin-bottom: 16rpx;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.detail-text {
+  font-size: var(--font-size-base);
+  line-height: 1.9;
+  color: #3a3a3a;
+  text-align: justify;
+}
+
+.detail-imgs {
+  margin-top: 20rpx;
+}
+
+.detail-cell {
+  margin-bottom: 16rpx;
+}
+
+.detail-img {
+  display: block;
+  width: 100%;
+  border-radius: 12rpx;
+  background: #f2eee4;
+}
+
+.detail-img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 240rpx;
+  background: #efe9db;
+}
+
+.detail-img-text {
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+}
+
+.foot-note {
+  margin-top: 24rpx;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: #9a9488;
+  text-align: center;
+}
+
+/* ==================== 底部下单条 ==================== */
+.buy-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  padding: 12rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #fffdf7;
+  border-top: 2rpx solid #e6e1d8;
+}
+
+/* 收货地址行 */
+.buy-addr {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 0;
+  border-bottom: 2rpx dashed #efe9db;
+}
+
+.buy-addr-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.buy-addr-name {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.buy-addr-detail {
+  display: block;
+  margin-top: 4rpx;
+  overflow: hidden;
+  font-size: var(--font-size-sm);
+  color: #7a7468;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.buy-addr-empty {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: #b4472f;
+}
+
+.buy-addr-arrow {
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  font-size: var(--font-size-base);
+  color: #c8c0b0;
+}
+
+/* 价格 + 按钮行 */
+.buy-row {
+  display: flex;
+  align-items: center;
+  padding-top: 12rpx;
+}
+
+.buy-price {
+  flex-shrink: 0;
+  margin-right: 24rpx;
+}
+
+.buy-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+}
+
+.buy-amount {
+  display: block;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: #b4472f;
+}
+
+.buy-btn {
+  flex: 1;
+}
+
+/* ==================== 通用 ==================== */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--btn-height);
+  padding: var(--btn-padding);
+  box-sizing: border-box;
+  font-size: var(--btn-font-size);
+  line-height: 1.2;
+  border-radius: var(--btn-radius);
+  background: #ffffff;
+  border: 2rpx solid #e6e1d8;
+  color: #2b2b2b;
+  overflow: hidden;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  background: #8b6f47;
+  border-color: #8b6f47;
+  color: #ffffff;
+}
+
+.btn-ghost {
+  background: #f5f1e8;
+}
+
+.loading-row {
+  padding: 80rpx 0;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: var(--font-size-base);
+  color: #8b6f47;
+}
+
+.empty {
+  padding: 120rpx 24rpx;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.empty-btn {
+  margin-top: 32rpx;
+}
+
+.error-text {
+  margin-top: 20rpx;
+  padding: 16rpx 20rpx;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: #b4472f;
+  background: #fdf1ee;
+  border-radius: var(--btn-radius);
+}
+
+/* ==================== 模式微调 ==================== */
+.ui-mode-elder .hero-img {
+  height: 520rpx;
+}
+
+.ui-mode-elder .customize-img {
+  height: 280rpx;
+}
+
+.ui-mode-child .customize,
+.ui-mode-child .hero-img,
+.ui-mode-child .section,
+.ui-mode-child .btn {
+  border-radius: 40rpx;
+}

@@ -1,0 +1,217 @@
+/* pages/index/index.wxss —— 首页（墨印世界）
+ * 规则：不用卡片、一屏一处朱红、字号只从 app.wxss 阶梯里取。
+ */
+
+.page {
+  padding-top: 12rpx;
+}
+
+/* ==================== 刊头 ==================== */
+.head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 62rpx;
+  line-height: 1;
+  letter-spacing: var(--track);
+  color: var(--ink);
+}
+
+/* 印章：全站唯一一个圆角，2rpx */
+.seal {
+  width: 56rpx;
+  height: 56rpx;
+  margin-top: 4rpx;
+  font-family: var(--font-display);
+  font-size: 30rpx;
+  line-height: 56rpx;
+  text-align: center;
+  color: #f7f3e8;
+  background: var(--zhu);
+  border-radius: 2rpx;
+}
+
+.caps {
+  display: flex;
+  gap: 26rpx;
+  margin-top: 20rpx;
+}
+
+.head-rule {
+  height: var(--hair);
+  margin-top: 24rpx;
+  background: var(--rule);
+}
+
+/* ==================== 主叙述 ==================== */
+.hero {
+  margin-top: 34rpx;
+}
+
+.hero-hover {
+  background: rgba(179, 56, 44, 0.04);
+}
+
+.display-line {
+  font-family: var(--font-display);
+  font-size: var(--f-display);
+  line-height: 1.14;
+  letter-spacing: var(--track);
+  color: var(--ink);
+}
+
+/* 朱红下划：全屏的目光落点 */
+.display-em {
+  display: inline-block;
+  border-bottom: 10rpx solid var(--zhu);
+}
+
+.lede {
+  max-width: 576rpx;
+  margin-top: 24rpx;
+  font-size: var(--f-body);
+  line-height: var(--lh-body);
+  color: var(--ink-2);
+}
+
+.act {
+  display: flex;
+  align-items: baseline;
+  gap: 28rpx;
+  margin-top: 26rpx;
+}
+
+.act-go {
+  padding-bottom: 8rpx;
+  font-family: var(--font-display);
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+  color: var(--zhu);
+  border-bottom: 2rpx solid var(--zhu);
+}
+
+.act-alt {
+  padding-bottom: 8rpx;
+  font-size: var(--f-micro);
+  color: var(--mute);
+  border-bottom: 2rpx solid var(--rule);
+}
+
+/* ==================== 手绘地图 ==================== */
+.map {
+  margin-top: 30rpx;
+}
+
+.map-hover {
+  opacity: 0.86;
+}
+
+/* 整幅出血：抵消页面左右留白 */
+.map-shot {
+  display: block;
+  width: calc(100% + var(--pad-page) * 2);
+  height: 260rpx;
+  margin-left: calc(var(--pad-page) * -1);
+  /* 底图仍是旧的彩色版，先做墨色化落到纸面上；换成手绘墨线图后删掉这行 */
+  filter: grayscale(1) sepia(0.28) contrast(1.5) brightness(0.92);
+}
+
+.map-cap {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: 12rpx;
+}
+
+.map-title {
+  font-family: var(--font-display);
+  font-size: 27rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  color: var(--ink);
+}
+
+.map-num {
+  font-size: var(--f-micro);
+  letter-spacing: var(--track-cap);
+  color: var(--mute);
+}
+
+/* ==================== 点位竖排 ==================== */
+.spots {
+  display: flex;
+  margin-top: 16rpx;
+}
+
+.spot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8rpx 0 2rpx;
+}
+
+.spot-line {
+  border-left: var(--hair) solid var(--rule);
+}
+
+.spot-hover {
+  background: var(--paper-2);
+}
+
+.spot-dot {
+  margin-bottom: 6rpx;
+  font-size: 28rpx;
+  line-height: 1;
+  color: var(--zhu);
+}
+
+.spot-ch {
+  font-family: var(--font-display);
+  font-size: 25rpx;
+  line-height: 1.45;
+  letter-spacing: 2rpx;
+  color: var(--ink-2);
+}
+
+/* ==================== 末行 ==================== */
+.tally {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16rpx;
+  padding-top: 14rpx;
+  border-top: var(--hair) solid var(--rule);
+}
+
+.tally-item {
+  font-size: var(--f-micro);
+  color: var(--mute);
+}
+
+.tally-price {
+  margin-left: 6rpx;
+  font-family: var(--font-display);
+  font-size: 24rpx;
+  color: var(--zhu);
+}
+
+/* ==================== 模式补丁 ==================== */
+/* 这几处字号是页面专有的（品牌、印章、竖排点位、价格），不是阶梯变量，
+   所以在模式类下显式放大，别让长辈模式只有正文变大、这些反而变小。 */
+.ui-mode-elder .brand { font-size: 78rpx; }
+.ui-mode-elder .seal { width: 72rpx; height: 72rpx; line-height: 72rpx; font-size: 38rpx; }
+.ui-mode-elder .display-em { border-bottom-width: 14rpx; }
+.ui-mode-elder .act-go { font-size: 40rpx; }
+.ui-mode-elder .map-title { font-size: 34rpx; }
+.ui-mode-elder .spot-ch { font-size: 32rpx; }
+.ui-mode-elder .tally-price { font-size: 30rpx; }
+
+.ui-mode-child .brand { font-size: 66rpx; }
+.ui-mode-child .display-em { border-bottom-width: 12rpx; }
+.ui-mode-child .spot-ch { font-size: 28rpx; }
+.ui-mode-child .act-go { font-size: 34rpx; }

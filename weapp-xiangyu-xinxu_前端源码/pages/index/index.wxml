@@ -1,0 +1,68 @@
+<!-- pages/index/index.wxml —— 首页（墨印） -->
+<view class="page {{uiModeClass}}">
+
+  <!-- 刊头：品牌 + 印章 + 四角小字 -->
+  <view class="head">
+    <view class="head-row">
+      <view class="brand">乡语新叙</view>
+      <view class="seal">叙</view>
+    </view>
+    <view class="caps">
+      <text class="cap">手绘地图</text>
+      <text class="cap">AI 拼贴</text>
+      <text class="cap">NFC 溯源</text>
+      <text class="cap">文创定制</text>
+    </view>
+    <view class="head-rule"></view>
+  </view>
+
+  <!-- 主叙述：NFC 溯源 -->
+  <view
+    class="hero"
+    bindtap="onGoNfc"
+    hover-class="hero-hover"
+    aria-role="button"
+    aria-label="去碰一碰：NFC 溯源，支持模拟芯片演示"
+  >
+    <view class="display-line">碰一碰，</view>
+    <view class="display-line display-em">听故事</view>
+    <view class="lede">把手机靠近围屋、土楼、擂茶台旁的贴纸，就能听到那处地方的老故事。</view>
+    <view class="act">
+      <text class="act-go">去碰一下 →</text>
+      <text class="act-alt">没有贴纸？用模拟芯片</text>
+    </view>
+  </view>
+
+  <!-- 手绘地图：整幅出血，不用卡片 -->
+  <view class="map" bindtap="onGoMap" hover-class="map-hover" aria-role="button" aria-label="打开手绘围屋地图">
+    <image class="map-shot" src="/assets/map/map-base.png" mode="aspectFill" />
+    <view class="map-cap">
+      <text class="map-title">手绘围屋地图</text>
+      <text class="map-num">五个点位</text>
+    </view>
+  </view>
+
+  <!-- 点位：竖排，像册页目录 -->
+  <view class="spots">
+    <view
+      class="spot {{index > 0 ? 'spot-line' : ''}}"
+      wx:for="{{spots}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onSpotTap"
+      hover-class="spot-hover"
+      aria-role="button"
+      aria-label="查看{{item.name}}"
+    >
+      <text class="spot-dot">·</text>
+      <text class="spot-ch" wx:for="{{item.chars}}" wx:for-item="ch" wx:key="*this">{{ch}}</text>
+    </view>
+  </view>
+
+  <!-- 末行：三件文创 -->
+  <view class="tally">
+    <text class="tally-item">围屋冰箱贴<text class="tally-price">¥39</text></text>
+    <text class="tally-item">拼贴明信片<text class="tally-price">¥29</text></text>
+    <text class="tally-item">擂茶礼盒<text class="tally-price">¥128</text></text>
+  </view>
+</view>

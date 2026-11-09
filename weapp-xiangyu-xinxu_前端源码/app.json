@@ -1,0 +1,70 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/collage/collage",
+    "pages/local-map/local-map",
+    "pages/goods-list/goods-list",
+    "pages/mine/mine",
+    "pages/nfc-trace/nfc-trace",
+    "pages/goods-detail/goods-detail",
+    "pages/my-works/my-works",
+    "pages/setting/setting",
+    "pages/my-order/my-order",
+    "pages/address/address"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "backgroundColor": "#f2efe4",
+    "navigationBarBackgroundColor": "#f2efe4",
+    "navigationBarTitleText": "乡语新叙",
+    "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#6b6252",
+    "selectedColor": "#b3382c",
+    "backgroundColor": "#f2efe4",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/collage/collage",
+        "text": "拼贴",
+        "iconPath": "assets/tabbar/collage.png",
+        "selectedIconPath": "assets/tabbar/collage-active.png"
+      },
+      {
+        "pagePath": "pages/local-map/local-map",
+        "text": "地图",
+        "iconPath": "assets/tabbar/map.png",
+        "selectedIconPath": "assets/tabbar/map-active.png"
+      },
+      {
+        "pagePath": "pages/goods-list/goods-list",
+        "text": "商城",
+        "iconPath": "assets/tabbar/shop.png",
+        "selectedIconPath": "assets/tabbar/shop-active.png"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的",
+        "iconPath": "assets/tabbar/mine.png",
+        "selectedIconPath": "assets/tabbar/mine-active.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于在手绘地图上标出你的位置，并指引你走到五处点位"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation"
+  ],
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

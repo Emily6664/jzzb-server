@@ -1,0 +1,145 @@
+/* pages/goods-list/goods-list.wxss —— 文创商品（墨印世界）
+ * 商品不做成卡片，做成「目录条目」：一行一件，用发丝线分隔。
+ */
+
+.page {
+  padding-top: 24rpx;
+}
+
+/* ==================== 页头 ==================== */
+.head {
+  padding-bottom: 24rpx;
+}
+
+.head-title {
+  font-family: var(--font-display);
+  font-size: var(--f-title);
+  line-height: 1.2;
+  letter-spacing: var(--track);
+  color: var(--ink);
+}
+
+.head-sub {
+  margin-top: 10rpx;
+  font-size: var(--f-micro);
+  letter-spacing: 1rpx;
+  color: var(--mute);
+}
+
+.head-rule {
+  height: var(--hair);
+  background: var(--rule);
+}
+
+/* ==================== 条目 ==================== */
+.row {
+  display: flex;
+  padding: 26rpx 0;
+  border-bottom: var(--hair) solid var(--rule);
+}
+
+.row-hover {
+  background: var(--paper-2);
+}
+
+.row-img {
+  flex-shrink: 0;
+  width: 132rpx;
+  height: 132rpx;
+  border: var(--hair) solid var(--rule-2);
+}
+
+.row-img-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-2);
+}
+
+.row-img-text {
+  padding: 0 10rpx;
+  font-size: var(--f-micro);
+  line-height: 1.4;
+  text-align: center;
+  color: var(--mute);
+}
+
+.row-main {
+  flex: 1;
+  min-width: 0;
+  margin-left: 22rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.row-name {
+  font-size: var(--f-head);
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.row-summary {
+  flex: 1;
+  margin-top: 8rpx;
+  font-size: var(--f-small);
+  line-height: 1.7;
+  color: var(--mute);
+}
+
+.row-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 12rpx;
+}
+
+.row-price {
+  font-family: var(--font-display);
+  font-size: 32rpx;
+  letter-spacing: 1rpx;
+  color: var(--zhu);
+}
+
+.row-go {
+  font-size: var(--f-micro);
+  letter-spacing: 1rpx;
+  color: var(--ink-2);
+  border-bottom: 2rpx solid var(--rule-2);
+  padding-bottom: 4rpx;
+}
+
+/* ==================== 状态 ==================== */
+.state {
+  padding: 90rpx 0;
+  text-align: center;
+}
+
+.state-text {
+  font-family: var(--font-display);
+  font-size: var(--f-head);
+  letter-spacing: 2rpx;
+  color: var(--ink);
+}
+
+.state-tip {
+  margin-top: 14rpx;
+  font-size: var(--f-small);
+  line-height: 1.7;
+  color: var(--mute);
+}
+
+.error {
+  margin-top: 24rpx;
+  padding: 18rpx 22rpx;
+  font-size: var(--f-small);
+  color: var(--zhu);
+  border: 2rpx solid var(--zhu);
+}
+
+/* ==================== 模式补丁 ==================== */
+.ui-mode-elder .row-img { width: 168rpx; height: 168rpx; }
+.ui-mode-elder .row-price { font-size: 40rpx; }
+.ui-mode-elder .row-go { font-size: 27rpx; }
+
+.ui-mode-child .row-img { width: 144rpx; height: 144rpx; }
+.ui-mode-child .row-price { font-size: 36rpx; }

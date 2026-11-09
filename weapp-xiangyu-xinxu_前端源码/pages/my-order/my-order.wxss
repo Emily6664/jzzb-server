@@ -1,0 +1,280 @@
+/* pages/my-order/my-order.wxss —— 我的订单
+ * 字号、按钮尺寸全部走 app.wxss 的 CSS 变量，切模式时本页自动跟随。
+ */
+.page {
+  padding: 32rpx 32rpx 80rpx;
+}
+
+/* ==================== 页头 ==================== */
+.head {
+  margin-bottom: 24rpx;
+}
+
+.head-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.head-sub {
+  margin-top: 8rpx;
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+}
+
+/* ==================== 订单卡片 ==================== */
+.order {
+  margin-bottom: 24rpx;
+  padding: 20rpx 24rpx;
+  background: #ffffff;
+  border: 2rpx solid #e6e1d8;
+  border-radius: var(--btn-radius);
+}
+
+.order:active {
+  background: #f7f4ec;
+}
+
+.order-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16rpx;
+  border-bottom: 2rpx dashed #efe9db;
+}
+
+.order-id {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-status {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  padding: 4rpx 16rpx;
+  font-size: var(--font-size-sm);
+  border-radius: 999rpx;
+}
+
+.status-unpaid {
+  color: #b47f2f;
+  background: #fdf5e6;
+}
+
+.status-paid {
+  color: #3f7a4f;
+  background: #edf6ee;
+}
+
+.status-shipped {
+  color: #2f6a8b;
+  background: #eaf3f8;
+}
+
+.status-finished {
+  color: #7a7468;
+  background: #f2eee4;
+}
+
+.order-body {
+  display: flex;
+  align-items: center;
+  padding-top: 20rpx;
+}
+
+.order-img {
+  flex-shrink: 0;
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 12rpx;
+  background: #f2eee4;
+}
+
+.order-img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #efe9db;
+}
+
+.order-img-text {
+  padding: 0 10rpx;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  color: #7a7468;
+  text-align: center;
+}
+
+.order-main {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+}
+
+.order-name {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.order-spec {
+  margin-top: 8rpx;
+  font-size: var(--font-size-sm);
+  color: #7a7468;
+}
+
+.order-time {
+  margin-top: 8rpx;
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+}
+
+.order-amount {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  text-align: right;
+}
+
+.order-amount-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+}
+
+.order-amount-text {
+  display: block;
+  margin-top: 6rpx;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: #b4472f;
+}
+
+.order-tag {
+  margin-top: 16rpx;
+  padding-top: 12rpx;
+  font-size: var(--font-size-sm);
+  color: #8b6f47;
+  border-top: 2rpx dashed #efe9db;
+}
+
+/* 待付款订单的「去支付」条 */
+.order-paybar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 2rpx dashed #efe9db;
+}
+
+.order-paytip {
+  font-size: var(--font-size-sm);
+  color: #b47f2f;
+}
+
+.order-paybtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: calc(var(--btn-height) * 0.74);
+  margin: 0;
+  padding: 0 36rpx;
+  font-size: var(--font-size-sm);
+  color: #ffffff;
+  background: #8b6f47;
+  border: none;
+  border-radius: 999rpx;
+}
+
+.order-paybtn::after {
+  border: none;
+}
+
+/* ==================== 状态 ==================== */
+.loading-row {
+  padding: 60rpx 0;
+  text-align: center;
+}
+
+.loading-text {
+  font-size: var(--font-size-base);
+  color: #8b6f47;
+}
+
+.empty {
+  padding: 100rpx 24rpx;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.empty-tip {
+  margin: 14rpx 0 40rpx;
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  color: #9a9488;
+}
+
+.empty-btn {
+  margin-top: 8rpx;
+}
+
+.error-text {
+  margin-top: 20rpx;
+  padding: 16rpx 20rpx;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: #b4472f;
+  background: #fdf1ee;
+  border-radius: var(--btn-radius);
+}
+
+/* ==================== 按钮 ==================== */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--btn-height);
+  padding: var(--btn-padding);
+  box-sizing: border-box;
+  font-size: var(--btn-font-size);
+  border-radius: var(--btn-radius);
+  background: #ffffff;
+  border: 2rpx solid #e6e1d8;
+  color: #2b2b2b;
+  overflow: hidden;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  background: #8b6f47;
+  border-color: #8b6f47;
+  color: #ffffff;
+}
+
+/* ==================== 模式微调 ==================== */
+.ui-mode-elder .order-img {
+  width: 180rpx;
+  height: 180rpx;
+}
+
+.ui-mode-child .order,
+.ui-mode-child .order-img,
+.ui-mode-child .order-status,
+.ui-mode-child .btn {
+  border-radius: 999rpx;
+}

@@ -1,0 +1,251 @@
+/* app.wxss —— 全局样式与设计变量
+ *
+ * 【设计世界：墨印】纸色底 + 墨黑字 + 朱红一点 + 发丝线。
+ * 三原则（改样式前先看这三条，别破坏）：
+ *   1. 不用卡片。分组靠留白和 1rpx 细线，不靠圆角描边框。
+ *   2. 一屏只有一处朱红。它是目光落点，用多了就废了。
+ *   3. 主标题用宋体大字，正文用系统黑体。字号阶梯固定，不要临时造数。
+ *
+ * 三种 uiMode 的差异全部通过 CSS 变量表达：normal 用 page 上的默认值，
+ * elder / child 覆盖同名变量。页面里只写变量，不写死数值。
+ *
+ * 用法：页面根节点按 app.globalData.uiMode 挂类名
+ *   normal -> class="page"
+ *   elder  -> class="page ui-mode-elder"
+ *   child  -> class="page ui-mode-child"
+ */
+
+/* ==================== 墨印：基础变量（普通模式） ==================== */
+page {
+  /* —— 纸与墨 —— */
+  --paper: #f2efe4;         /* 页面底色 */
+  --paper-2: #faf7ee;       /* 浅一层，用于需要压色差的块 */
+  --ink: #171410;           /* 主文字 */
+  --ink-2: #4b4436;         /* 正文 */
+  --mute: #6b6252;          /* 辅助说明，纸底 4.9:1 */
+  --rule: #cdc5b0;          /* 发丝线 */
+  --rule-2: #a89d82;        /* 加重线 */
+  --zhu: #b3382c;           /* 朱红：一屏只准出现一处 */
+  --zhu-2: #8c2b21;         /* 朱红按下态 */
+
+  /* —— 字体 —— */
+  --font-display: "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", SimSun, serif;
+  --font-body: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+
+  /* —— 字号阶梯（750 设计稿） —— */
+  --f-display: 68rpx;       /* 主视觉，一屏只许一处 */
+  --f-title: 44rpx;         /* 区块标题 */
+  --f-head: 34rpx;          /* 小标题 */
+  --f-body: 27rpx;          /* 正文 */
+  --f-small: 23rpx;         /* 辅助 */
+  --f-micro: 21rpx;         /* 极小字（标签、单位） */
+
+  /* —— 节奏 —— */
+  --lh-body: 1.95;
+  --track: 2rpx;            /* 宋体大字字距 */
+  --track-cap: 4rpx;        /* 小标签字距 */
+  --pad-page: 40rpx;        /* 页面左右留白 */
+  --hair: 1rpx;             /* 发丝线 */
+
+  /* ====== 兼容旧页面（其余 8 页尚未改版，逐步迁移后删除） ====== */
+  --font-size-base: 28rpx;
+  --font-size-lg: 34rpx;
+  --font-size-sm: 24rpx;
+  --font-size-xl: 48rpx;
+  --font-family-display: var(--font-display);
+  --color-text-sub: #5f584b;
+  --color-text-mute: #6f6858;
+  --btn-height: 88rpx;
+  --btn-font-size: 30rpx;
+  --btn-padding: 0 48rpx;
+  --btn-radius: 12rpx;
+}
+
+/* ==================== 长辈大字模式 ==================== */
+.ui-mode-elder {
+  --f-display: 84rpx;
+  --f-title: 56rpx;
+  --f-head: 42rpx;
+  --f-body: 36rpx;
+  --f-small: 30rpx;
+  --f-micro: 27rpx;
+  --lh-body: 2;
+  --track: 3rpx;
+  --hit-min: 120rpx;        /* 长辈模式最小可点高度 */
+
+  /* 旧变量同步放大 */
+  --font-size-base: 40rpx;
+  --font-size-lg: 48rpx;
+  --font-size-sm: 34rpx;
+  --font-size-xl: 60rpx;
+  --color-text-mute: #5f584b;
+  --btn-height: 120rpx;
+  --btn-font-size: 42rpx;
+  --btn-padding: 0 64rpx;
+  --btn-radius: 16rpx;
+}
+
+/* ==================== 儿童模式 ==================== */
+.ui-mode-child {
+  --f-display: 72rpx;
+  --f-title: 48rpx;
+  --f-head: 38rpx;
+  --f-body: 31rpx;
+  --f-small: 27rpx;
+  --f-micro: 24rpx;
+  --track: 4rpx;
+  --hit-min: 104rpx;
+
+  --font-size-base: 32rpx;
+  --font-size-lg: 40rpx;
+  --font-size-sm: 28rpx;
+  --font-size-xl: 52rpx;
+  --btn-height: 104rpx;
+  --btn-font-size: 36rpx;
+  --btn-padding: 0 56rpx;
+  --btn-radius: 48rpx;
+}
+
+/* ==================== 页面通用容器 ==================== */
+.page {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 0 var(--pad-page) 40rpx;
+  font-family: var(--font-body);
+  font-size: var(--f-body);
+  line-height: var(--lh-body);
+  color: var(--ink-2);
+  background-color: var(--paper);
+}
+
+/* ==================== 墨印通用件 ==================== */
+/* 发丝线：代替卡片边框 */
+.rule {
+  height: var(--hair);
+  background: var(--rule);
+}
+
+/* 区块小标签：字距拉开的小字，代替「标题 + 图标」 */
+.cap {
+  font-size: var(--f-micro);
+  letter-spacing: var(--track-cap);
+  color: var(--mute);
+}
+
+/* 宋体大字 */
+.display {
+  font-family: var(--font-display);
+  font-size: var(--f-display);
+  line-height: 1.16;
+  letter-spacing: var(--track);
+  color: var(--ink);
+}
+
+/* 墨印按钮：直角、朱红底、白字。没有圆角，没有阴影。 */
+.btn-zhu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hit-min, 88rpx);
+  padding: 0 40rpx;
+  font-family: var(--font-display);
+  font-size: var(--f-head);
+  letter-spacing: 4rpx;
+  color: #f7f3e8;
+  background: var(--zhu);
+  border-radius: 0;
+}
+
+.btn-zhu:active,
+.btn-zhu.zhu-hover {
+  background: var(--zhu-2);
+}
+
+/* ==================== 墨印：文字链与线框按钮 ==================== */
+/* 文字链：次要动作，朱红或墨色，带 2rpx 下划 */
+.btn-text {
+  display: inline-flex;
+  align-items: center;
+  min-height: 56rpx;
+  padding: 0;
+  font-size: var(--f-small);
+  letter-spacing: 1rpx;
+  color: var(--ink-2);
+  background: transparent;
+  border: none;
+  border-bottom: 2rpx solid var(--rule-2);
+  border-radius: 0;
+  line-height: 1.4;
+}
+
+.btn-text::after {
+  border: none;
+}
+
+.btn-text.zhu {
+  color: var(--zhu);
+  border-bottom-color: var(--zhu);
+}
+
+/* 线框块：次要但需要成块的动作 */
+.btn-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hit-min, 88rpx);
+  padding: 0 32rpx;
+  font-size: var(--f-small);
+  letter-spacing: 2rpx;
+  color: var(--ink);
+  background: transparent;
+  border: 2rpx solid var(--ink);
+  border-radius: 0;
+}
+
+.btn-line::after {
+  border: none;
+}
+
+.btn-line:active {
+  background: var(--paper-2);
+}
+
+
+/* ==================== 墨印：小动作按钮 ==================== */
+/* 用在「选中某个东西之后」的局部操作，比 .btn-text 更有实体感，
+   但比 .btn-zhu 轻，不会抢主按钮的注意力。 */
+.mini-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56rpx;
+  padding: 0 22rpx;
+  font-size: var(--f-micro);
+  line-height: 1;
+  letter-spacing: 1rpx;
+  color: var(--ink-2);
+  background: transparent;
+  border: var(--hair) solid var(--rule-2);
+  border-radius: 0;
+}
+
+.mini-btn::after {
+  border: none;
+}
+
+.mini-btn:active {
+  background: var(--paper-2);
+}
+
+/* 破坏性操作：靠线宽和墨色拉开层级，不用朱红（朱红是强调色，不是危险色） */
+.mini-btn.is-danger {
+  color: var(--ink);
+  border-width: 2rpx;
+  border-color: var(--ink);
+}
+
+.ui-mode-elder .mini-btn {
+  height: 76rpx;
+  padding: 0 28rpx;
+  font-size: var(--f-small);
+}

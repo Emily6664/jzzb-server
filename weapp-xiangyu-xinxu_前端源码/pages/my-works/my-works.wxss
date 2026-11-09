@@ -1,0 +1,143 @@
+/* pages/my-works/my-works.wxss —— 我的作品
+ * 字号、按钮尺寸全部走 app.wxss 里的 CSS 变量，切换 uiMode 时自动跟随。
+ */
+.page {
+  padding: 40rpx 32rpx 120rpx;
+}
+
+.page-title {
+  margin-bottom: 32rpx;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+/* ==================== 空态 ==================== */
+.empty {
+  padding: 120rpx 24rpx;
+  text-align: center;
+}
+
+.empty-text {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.empty-tip {
+  margin: 16rpx 0 40rpx;
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  color: #9a9488;
+}
+
+/* ==================== 作品卡片 ==================== */
+.work-card {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+  padding: 20rpx;
+  background: #ffffff;
+  border: 2rpx solid #e6e1d8;
+  border-radius: var(--btn-radius);
+}
+
+.work-card:active {
+  background: #f7f4ec;
+}
+
+.work-img {
+  flex-shrink: 0;
+  width: 180rpx;
+  height: 240rpx;
+  border-radius: 12rpx;
+  background: #f2eee4;
+}
+
+.work-meta {
+  flex: 1;
+  min-width: 0;
+  margin-left: 24rpx;
+}
+
+.work-name {
+  display: block;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: #2b2b2b;
+}
+
+.work-desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: var(--font-size-sm);
+  color: #7a7468;
+}
+
+.work-time {
+  display: block;
+  margin-top: 10rpx;
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+}
+
+/* ==================== 按钮 ==================== */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--btn-height);
+  padding: var(--btn-padding);
+  box-sizing: border-box;
+  font-size: var(--btn-font-size);
+  border-radius: var(--btn-radius);
+  background: #ffffff;
+  border: 2rpx solid #e6e1d8;
+  color: #2b2b2b;
+  overflow: hidden;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  margin-top: 8rpx;
+  background: #8b6f47;
+  border-color: #8b6f47;
+  color: #ffffff;
+}
+
+.foot-hint {
+  margin-top: 24rpx;
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+  text-align: center;
+}
+
+/* 作品图失效时的占位块 */
+.work-img-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #efe9db;
+}
+
+.work-img-text {
+  font-size: var(--font-size-sm);
+  color: #9a9488;
+}
+
+/* ==================== 模式微调 ==================== */
+/* 儿童模式：卡片更圆 */
+.ui-mode-child .work-card {
+  border-radius: 999rpx;
+}
+
+/* 长辈模式：作品图更大更好看清 */
+.ui-mode-elder .work-img {
+  width: 220rpx;
+  height: 294rpx;
+}
+

@@ -1,0 +1,62 @@
+<!-- pages/mine/mine.wxml —— 我的 -->
+<view class="page {{uiModeClass}}">
+
+  <!-- ============ 登录状态 ============ -->
+  <view class="profile" wx:if="{{logged}}">
+    <view class="profile-avatar">{{avatarText}}</view>
+    <view class="profile-main">
+      <view class="profile-name">{{nickname}}</view>
+      <view class="profile-sub">{{phoneText}}</view>
+    </view>
+    <text class="profile-logout" bindtap="onLogout">退出</text>
+  </view>
+
+  <view class="profile profile-guest" wx:else>
+    <view class="profile-avatar">乡</view>
+    <view class="profile-main">
+      <view class="profile-name">未登录</view>
+      <view class="profile-sub">{{uiModeText}} · {{voiceText}}朗读</view>
+    </view>
+  </view>
+
+  <button
+    class="btn btn-primary login-btn"
+    wx:if="{{!logged}}"
+    open-type="getPhoneNumber"
+    bindgetphonenumber="onGetPhoneNumber"
+    loading="{{logging}}"
+  >
+    微信手机号一键登录
+  </button>
+
+  <!-- ============ 功能列表 ============ -->
+  <view class="cell-group">
+    <view class="cell" bindtap="onGoWorks" hover-class="cell-hover">
+      <text class="cell-title">我的作品</text>
+      <text class="cell-value">{{workCount}} 张</text>
+      <text class="cell-arrow">›</text>
+    </view>
+
+    <view class="cell" bindtap="onGoOrder" hover-class="cell-hover">
+      <text class="cell-title">我的订单</text>
+      <text class="cell-value">{{orderCount}} 笔</text>
+      <text class="cell-arrow">›</text>
+    </view>
+
+    <view class="cell" bindtap="onGoAddress" hover-class="cell-hover">
+      <text class="cell-title">收货地址</text>
+      <text class="cell-value">{{addressCount}} 条</text>
+      <text class="cell-arrow">›</text>
+    </view>
+
+    <view class="cell" bindtap="onGoSetting" hover-class="cell-hover">
+      <text class="cell-title">设置</text>
+      <text class="cell-value">{{uiModeText}} · {{voiceText}}</text>
+      <text class="cell-arrow">›</text>
+    </view>
+  </view>
+
+  <button class="btn btn-primary" bindtap="onGoCollage">再拼一张</button>
+
+  <view class="foot-hint">作品、订单与地址都存在本机，换设备不会同步</view>
+</view>

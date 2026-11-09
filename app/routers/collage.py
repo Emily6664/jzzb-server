@@ -11,7 +11,7 @@ from ..config import get_settings
 from ..db import fetch_all, fetch_one, get_db
 from ..envelope import ok
 from ..errors import bad_request, forbidden, not_found
-from ..schemas import ComposeRequest, SaveWorkRequest
+from ..schemas import ComposeRequest, SaveWorkRequest, GenerateImageRequest
 from ..security import get_current_user
 from ..serializers import material_out, template_out, work_out
 from ..utils import clean_text, dumps, new_work_id, now_text
@@ -198,3 +198,26 @@ def delete_work(
 
     conn.execute("DELETE FROM collage_works WHERE work_id = ?", (work_id,))
     return ok({"workId": work_id, "deleted": True})
+
+
+@router.post("/generate", summary="家庭拼贴图生图")
+def generate_image(
+    payload: GenerateImageRequest,
+    request: Request,
+    conn: sqlite3.Connection = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    from ..services.image_generation import generate
+    template = fetch_one(conn, "SELECT * FROM collage_templates WHERE template_id = ?", (payload.template_id,))
+    if template is None:
+        raise bad_request("模板不存在")
+    work_id = new_work_id()
+    image_url = generate(payload.image, template["theme"], work_id)
+    if image_url.startswith("/media/"):
+        image_url = str(request.base_url).rstrip("/") + image_url
+    width, height = int(template["canvas_width"]), int(template["canvas_height"])
+    conn.execute(
+        "INSERT INTO collage_works (work_id,user_id,template_id,image_url,title,width,height,item_count,layout_json,saved,created_at,saved_at) VALUES (?,?,?,?,?,?,?,0,'[]',0,?,NULL)",
+        (work_id, str(user["user_id"]), payload.template_id, image_url, "家庭专属插画", width, height, now_text()),
+    )
+    return ok({"workId": work_id, "imageUrl": image_url, "width": width, "height": height})

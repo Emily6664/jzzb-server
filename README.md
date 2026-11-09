@@ -613,3 +613,20 @@ curl -X POST http://127.0.0.1:8000/api/goods/orders \
 | 分页 | 没实现，数据量小 | 按文档 5.4 加可选 `page` / `pageSize` 即可 |
 | 支付 | 代码就绪但未实测 | 见 9.2 |
 | 用户地址 | 仍存小程序本地 storage（文档 1.5 的约定） | 要同步多端再开接口 |
+
+
+## 家庭拼贴图生图
+
+小程序拼贴页新增「AI 生成家庭插画」按钮，将当前画布 PNG 发到 `POST /api/collage/generate`。输入为 `{templateId, image}`，image 为 PNG/JPEG/WebP base64 data URL（解码后最多 8MB）。按模板主题使用童趣或复古提示词，生成后调用现有保存接口并预览。原有海报导出保留。
+
+在 `.env` 填写 `IMAGE_API_KEY` 后重启服务。默认 `IMAGE_API_BASE=https://aiapi.shiwuyan.cn/v1`，`IMAGE_MODEL=[ant]gemini-2.5-flash`。密钥只在后端读取。
+
+默认假设服务支持 OpenAI 兼容 `/chat/completions` 的多模态请求。支持返回 message.content 中的 image_url、message.images、inline_data / inlineData、文本中的 base64 图片或 Markdown HTTPS 图片。模型只返回文字时报告失败，不生成占位作品。没有服务商协议确认或真实密钥调用记录，兼容性仍需实际验证；不自动重试付费生成。
+
+后端等待上游最多 100 秒，小程序请求超时 115 秒；代理也需允许相应等待时间。超时并不代表上游没有计费，重试前应核查服务商记录。耗时更长的模型需要另接异步任务协议。
+
+微信后台需配置 request 合法域名，以及生成图片所在主机的 downloadFile 合法域名。base64 返回的图片落入本地 media/work；HTTPS 链接返回的图片使用服务商原地址，可能存在过期时间。正式长期保存建议对接可信对象存储。返回 width/height 是模板画布尺寸，不保证与模型实际输出像素一致。
+
+验证：模拟上游图片返回、输入校验、文字响应失败及生成保存流程，并运行完整后端测试。真实服务出图和微信真机尚未验证。
+
+当前默认模型改为 `gpt-image-2`，使用 `/images/edits` multipart 图片编辑协议，解析 `data[0].b64_json` 或 `data[0].url`。其他模型仍走前述聊天兼容协议。
