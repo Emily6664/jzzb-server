@@ -27,4 +27,7 @@ logs/
 # 本地上传素材、出图测试产物和开发者私人配置
 input/
 media/work/ai-test-*
+# 「AI 生成家庭插画」的运行时产物（作品图不进仓库）
+media/work/work-*.jpg
+media/work/work-*.png
 project.private.config.json

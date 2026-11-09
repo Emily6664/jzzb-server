@@ -191,3 +191,22 @@ WECHAT_PAY_ENABLED=false
 | 改了 `seed_data.py` 里的文案，重启没变化 | 种子是 `INSERT OR IGNORE`；执行 `uv run python -m app.seed --force` |
 | 扫码上报的 `client_ip` 全是代理 IP | 代理没透传 `X-Forwarded-For`，或 `FORWARDED_ALLOW_IPS` 没包含代理 |
 | 支付回调一直重推 | `/api/notify/wechat-pay` 返回的不是 `{"code":"SUCCESS"}`，或 `WECHAT_PAY_API_V3_KEY` 不是 32 字节 |
+| 「AI 生成家庭插画」报 `插画生成失败` | `media/material/` 里的插画素材被删了（本地合成要用）；看日志里 `家庭插画合成失败` 的 traceback |
+| 点了「AI 生成」一直转圈 | 外部图生图（配了 `IMAGE_API_KEY`）超时；前端超时 115s，上游超时会回落本地合成 |
+
+---
+
+## 9. AI 生图（可选）
+
+四个变量，全部可以留空——**留空就是本地合成，不联网、不花钱**。
+
+| 变量 | 默认 | 作用 |
+| --- | --- | --- |
+| `IMAGE_API_BASE` | `https://aiapi.shiwuyan.cn/v1` | 外部图生图服务地址（OpenAI 兼容），只有配了 key 才会用到 |
+| `IMAGE_API_KEY` | 空 | **留空 = 本地合成**（Pillow + `media/material/1..4.jpg`）；填了才调外部服务，失败自动回落本地 |
+| `IMAGE_MODEL` | `gpt-image-2` | 以 `gpt-image-` 开头走 `/images/edits`，否则走 `/chat/completions` 多模态 |
+| `IMAGE_TIMEOUT_SECONDS` | `100` | 等上游的超时；小程序侧请求超时是 115 秒，别配得比它大 |
+
+本地合成的输出：1080×1440 JPEG，约 100–300KB，耗时 <1s，落在 `media/work/`。
+童趣模板取 `1.jpg`/`2.jpg`（彩稿）做模糊底纹，复古模板取 `3.jpg`/`4.jpg`（线稿），
+每次随机挑一张，所以同一张拼贴多生成几次底纹会略有不同。

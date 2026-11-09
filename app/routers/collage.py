@@ -10,10 +10,11 @@ from fastapi import APIRouter, Depends, Request
 from ..config import get_settings
 from ..db import fetch_all, fetch_one, get_db
 from ..envelope import ok
-from ..errors import bad_request, forbidden, not_found
-from ..schemas import ComposeRequest, SaveWorkRequest, GenerateImageRequest
+from ..errors import CODE_SERVER_ERROR, BizError, bad_request, forbidden, not_found
+from ..schemas import ComposeRequest, GenerateImageRequest, SaveWorkRequest
 from ..security import get_current_user
 from ..serializers import material_out, template_out, work_out
+from ..services import illustration, image_generation
 from ..utils import clean_text, dumps, new_work_id, now_text
 
 logger = logging.getLogger(__name__)
@@ -200,24 +201,72 @@ def delete_work(
     return ok({"workId": work_id, "deleted": True})
 
 
-@router.post("/generate", summary="家庭拼贴图生图")
+@router.post("/generate", summary="AI 生成家庭插画")
 def generate_image(
     payload: GenerateImageRequest,
-    request: Request,
     conn: sqlite3.Connection = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    from ..services.image_generation import generate
-    template = fetch_one(conn, "SELECT * FROM collage_templates WHERE template_id = ?", (payload.template_id,))
+    """把前端导出的拼贴成图变成一张「家庭专属插画」。
+
+    - 配了 `IMAGE_API_KEY`：先调外部图生图服务，失败自动回落本地合成
+    - 没配（默认）：用 `media/material/1..4.jpg` 这几张插画做本地合成，离线、无费用
+    """
+    settings = get_settings()
+    template_id = clean_text(payload.template_id, 64)
+    if not template_id:
+        raise bad_request("缺少模板 ID templateId")
+
+    template = fetch_one(
+        conn, "SELECT * FROM collage_templates WHERE template_id = ?", (template_id,)
+    )
     if template is None:
-        raise bad_request("模板不存在")
+        raise bad_request(f"模板不存在：{template_id}")
+
+    theme = str(template.get("theme") or "")
     work_id = new_work_id()
-    image_url = generate(payload.image, template["theme"], work_id)
-    if image_url.startswith("/media/"):
-        image_url = str(request.base_url).rstrip("/") + image_url
-    width, height = int(template["canvas_width"]), int(template["canvas_height"])
+    subtitle = illustration.build_subtitle(str(template.get("name") or ""), now_text()[:10])
+    width = int(template.get("canvas_width") or 750)
+    height = int(template.get("canvas_height") or 1000)
+    image_url: str | None = None
+
+    if settings.image_api_key:
+        try:
+            remote = image_generation.generate(payload.image, theme, work_id)
+            if remote.startswith("https://"):
+                image_url = remote
+            elif remote.startswith("/media/"):
+                relative = remote[len("/media/") :]
+                width, height = illustration.image_size(settings.media_dir / relative)
+                image_url = f"{settings.media_public_base}/{relative}"
+            else:
+                raise BizError(CODE_SERVER_ERROR, "图生图服务返回了无法识别的地址")
+        except Exception as exc:  # 外部服务不稳定时不让用户白等
+            logger.warning("外部图生图不可用，改用本地合成：%s", exc)
+            image_url = None
+
+    if image_url is None:
+        try:
+            image_url, width, height = illustration.render(payload.image, theme, work_id, subtitle)
+        except illustration.IllustrationError as exc:
+            raise bad_request(str(exc))
+        except Exception as exc:
+            logger.exception("家庭插画合成失败：%s", exc)
+            raise BizError(CODE_SERVER_ERROR, "插画生成失败，请稍后重试")
+
     conn.execute(
         "INSERT INTO collage_works (work_id,user_id,template_id,image_url,title,width,height,item_count,layout_json,saved,created_at,saved_at) VALUES (?,?,?,?,?,?,?,0,'[]',0,?,NULL)",
-        (work_id, str(user["user_id"]), payload.template_id, image_url, "家庭专属插画", width, height, now_text()),
+        (
+            work_id,
+            str(user["user_id"]),
+            template_id,
+            image_url,
+            "家庭专属插画",
+            width,
+            height,
+            now_text(),
+        ),
     )
+
+    logger.info("生成家庭插画：%s（%s）", work_id, template_id)
     return ok({"workId": work_id, "imageUrl": image_url, "width": width, "height": height})

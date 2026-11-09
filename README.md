@@ -163,6 +163,7 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000   # 直接用 uvicorn
 | 18 | POST | `/goods/orders/{orderId}/cancel` | 取消待付款订单 | 5.3 扩展 |
 | 19 | POST | `/notify/wechat-pay` | 微信支付回调（服务端到服务端） | 5.3 扩展 |
 | 20 | POST | `/user/logout` | 退出登录（作废 token） | 扩展 |
+| 21 | POST | `/collage/generate` | AI 生成家庭插画（本地合成 / 可选外部） | 见文末 |
 | 21 | GET | `/health` | 健康检查 | 扩展 |
 
 **返回约定**（与文档 1.1 一致）
@@ -661,8 +662,8 @@ curl -X POST http://127.0.0.1:8000/api/goods/orders \
 
 | 项 | 现状 | 后续 |
 | --- | --- | --- |
-| 拼贴合成（3.3） | 只记录排版并返回占位地址 `/work/{workId}.png`，不做像素合成 | 接 Pillow / 独立渲染服务，替换 `image_url` 来源即可，接口结构不用动 |
-| 媒体文件 | 图片音频仍由 CDN / 反向代理提供，本服务不托管 | 也可以挂 `StaticFiles` 到 `/media`，再把 `MEDIA_BASE_URL` 指过来 |
+| 拼贴合成（3.3 `/collage/compose`） | 接口保留，只记录排版并返回占位地址（旧前端用）；**新前端的「AI 生成」走 `/collage/generate`，会真实出图** | 需要像素级合成时也可以在 compose 里复用 `illustration.py` |
+| 媒体文件 | 由本服务 `/media` 直出（见 6.5），不需要 CDN | 量大时换成 CDN，只改 `MEDIA_BASE_URL` |
 | 并发与扩展 | 单进程 + SQLite，适合一台机器的小程序 | 多实例部署要换 PostgreSQL，并把 `db.py` 换成 SQLAlchemy / asyncpg |
 | 管理后台 | 没有 | 商品 / 点位 / 标签目前改 `seed_data.py` 或直接改库 |
 | 分页 | 没实现，数据量小 | 按文档 5.4 加可选 `page` / `pageSize` 即可 |
@@ -670,17 +671,29 @@ curl -X POST http://127.0.0.1:8000/api/goods/orders \
 | 用户地址 | 仍存小程序本地 storage（文档 1.5 的约定） | 要同步多端再开接口 |
 
 
-## 家庭拼贴图生图
+## 家庭拼贴图生图（AI 生图）
 
-小程序拼贴页新增「AI 生成家庭插画」按钮，将当前画布 PNG 发到 `POST /api/collage/generate`。输入为 `{templateId, image}`，image 为 PNG/JPEG/WebP base64 data URL（解码后最多 8MB）。按模板主题使用童趣或复古提示词，生成后调用现有保存接口并预览。原有海报导出保留。
+拼贴页的「AI 生成家庭插画」→ `POST /api/collage/generate`。
 
-在 `.env` 填写 `IMAGE_API_KEY` 后重启服务。默认 `IMAGE_API_BASE=https://aiapi.shiwuyan.cn/v1`，`IMAGE_MODEL=[ant]gemini-2.5-flash`。密钥只在后端读取。
+- **入参**：`{ "templateId": "tpl-childlike", "image": "data:image/png;base64,..." }`，
+  `image` 是画布导出图（`exportPoster()` 的结果），解码后上限 12MB。
+- **返回**：`{ workId, imageUrl, width, height }`；前端接着调 `POST /collage/works` 存成作品，
+  再 `wx.downloadFile` 拿图预览。
 
-默认假设服务支持 OpenAI 兼容 `/chat/completions` 的多模态请求。支持返回 message.content 中的 image_url、message.images、inline_data / inlineData、文本中的 base64 图片或 Markdown HTTPS 图片。模型只返回文字时报告失败，不生成占位作品。没有服务商协议确认或真实密钥调用记录，兼容性仍需实际验证；不自动重试付费生成。
+两种实现，按配置自动选择：
 
-后端等待上游最多 100 秒，小程序请求超时 115 秒；代理也需允许相应等待时间。超时并不代表上游没有计费，重试前应核查服务商记录。耗时更长的模型需要另接异步任务协议。
+| 配置 | 行为 |
+| --- | --- |
+| `IMAGE_API_KEY` 留空（**默认**） | **本地合成**：Pillow 把拼贴成图装进 1080×1440 的海报，用 `media/material/1..4.jpg` 做模糊底纹（童趣取 1/2 的彩稿，复古取 3/4 的线稿）。离线、免费、约 1 秒出图 |
+| 配了 `IMAGE_API_KEY` | 先调外部图生图（OpenAI 兼容：`gpt-image-*` 走 `/images/edits`，其余走 `/chat/completions`）；失败或超时**自动回落**本地合成，不会让用户白等 |
 
-微信后台需配置 request 合法域名，以及生成图片所在主机的 downloadFile 合法域名。base64 返回的图片落入本地 media/work；HTTPS 链接返回的图片使用服务商原地址，可能存在过期时间。正式长期保存建议对接可信对象存储。返回 width/height 是模板画布尺寸，不保证与模型实际输出像素一致。
+要点：
+
+- 生成结果写进 `media/work/`，对外地址 = `MEDIA_BASE_URL` + `/work/xxx.jpg`（`width/height` 是真实像素）；
+- 小程序后台要有 **request** 合法域名；预览用 `wx.downloadFile`，所以同一个域名还要进 **downloadFile** 合法域名；
+- 前端请求超时是 115 秒，本地合成远小于这个值；外部模型如果更慢，需要改成异步任务协议；
+- 想换成真正的生图模型：替换 `app/services/illustration.py` 里的 `render()`（或改 `image_generation.py` 的协议），
+  接口契约不用动。
 
 验证：模拟上游图片返回、输入校验、文字响应失败及生成保存流程，并运行完整后端测试。真实服务出图和微信真机尚未验证。
 
