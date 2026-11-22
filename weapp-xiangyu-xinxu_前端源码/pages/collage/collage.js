@@ -18,6 +18,9 @@ const WORKS_LIMIT = 20;
 // 定制文创默认带的商品 ID（goods-detail 尚未接入作品图，先带示例商品）
 const CUSTOM_GOODS_ID = 'goods-01';
 
+// AI 生成的家庭插画标题（后端也是这个默认值）
+const WORK_TITLE = '家庭专属插画';
+
 const UI_MODE_TEXT = {
   normal: '普通模式',
   elder: '长辈大字',
@@ -66,7 +69,11 @@ Page({
 
     itemCount: 0,
     saving: false,
-    navigating: false
+    navigating: false,
+
+    // AI 生成的插画：生成后一直留在页面上，可保存相册 / 看大图 / 重试同步
+    generated: null,
+    savingImage: false
   },
 
   onLoad() {
@@ -387,6 +394,8 @@ Page({
 
         comp.clear();
         this._lastPlayedMaterialId = '';
+        // 画布清空了，上一张 AI 插画就不再对应画布内容，避免「定制文创」误用旧图
+        this.setData({ generated: null });
       }
     });
   },
@@ -400,8 +409,10 @@ Page({
       wx.showToast({ title: '先把素材放入画布', icon: 'none' });
       return;
     }
+
     this.setData({ saving: true });
     wx.showLoading({ title: '正在绘制家庭插画', mask: true });
+
     try {
       const templateId = this.data.activeTemplateId;
       const path = await comp.exportPoster();
@@ -409,30 +420,138 @@ Page({
         wx.getFileSystemManager().readFile({ filePath: path, encoding: 'base64',
           success: res => resolve('data:image/png;base64,' + res.data), fail: reject });
       });
+
+      // 1) 后端生成（图片同时落到 media/work 并写进 collage_works 表）
       const result = await collageApi.generate({ templateId: templateId, image: image });
-      await collageApi.saveWork({ workId: result.workId, imageUrl: result.imageUrl, title: '家庭专属插画' });
-      const local = await new Promise((resolve, reject) => {
-        wx.downloadFile({ url: result.imageUrl,
-          success: res => res.statusCode === 200 ? resolve(res.tempFilePath) : reject(new Error('图片下载失败')),
-          fail: reject });
+
+      // 2) 下载到本地：失败也不要紧，展示时回退用服务端地址
+      const localPath = await this.downloadArtwork(result.imageUrl);
+
+      // 3) 本地作品记录
+      const record = this.saveWorkRecord(localPath, {
+        workId: result.workId,
+        imageUrl: result.imageUrl,
+        title: WORK_TITLE
       });
-      const saved = await this.persistImage(local);
-      const record = this.saveWorkRecord(saved);
-      const list = getStorage(WORKS_KEY, []) || [];
-      const index = list.findIndex(item => item.workId === record.workId);
-      if (index >= 0) {
-        list[index].workId = result.workId;
-        list[index].imageUrl = result.imageUrl;
-        setStorage(WORKS_KEY, list);
+
+      // 4) 同步到服务端作品集（/collage/works），失败时页面上留「重试同步」
+      let backendSaved = false;
+      try {
+        await collageApi.saveWork({ workId: result.workId, imageUrl: result.imageUrl, title: WORK_TITLE });
+        backendSaved = true;
+        this.markWorkSynced(record.workId);
+      } catch (err) {
+        console.warn('[collage] 作品同步服务器失败:', err);
       }
+
       wx.hideLoading();
-      wx.previewImage({ current: saved, urls: [saved] });
+      this.setData({
+        generated: {
+          workId: result.workId,
+          imageUrl: result.imageUrl,
+          localPath: localPath || '',
+          title: WORK_TITLE,
+          createdAt: record.createdAt,
+          backendSaved: backendSaved,
+          albumSaved: false
+        }
+      });
+      wx.showToast({
+        title: backendSaved ? '已生成并保存' : '已生成，待同步',
+        icon: backendSaved ? 'success' : 'none'
+      });
     } catch (err) {
       wx.hideLoading();
       wx.showModal({ title: '插画生成未完成', content: (err && (err.message || err.errMsg)) || '请稍后重试', showCancel: false });
     } finally {
       this.setData({ saving: false });
     }
+  },
+
+  /** 下载生成的插画并落到本地持久目录；失败返回空串，由调用方回退到网络地址 */
+  downloadArtwork(url) {
+    return new Promise((resolve) => {
+      wx.downloadFile({
+        url: url,
+        success: (res) => {
+          if (res.statusCode !== 200 || !res.tempFilePath) {
+            resolve('');
+            return;
+          }
+          this.persistImage(res.tempFilePath).then(resolve).catch(() => resolve(res.tempFilePath));
+        },
+        fail: (err) => {
+          console.warn('[collage] 插画下载失败:', err);
+          resolve('');
+        }
+      });
+    });
+  },
+
+  /** 标记某件作品已经同步到服务端 */
+  markWorkSynced(workId) {
+    const list = getStorage(WORKS_KEY, []) || [];
+    const next = list.map((item) =>
+      item.workId === workId ? Object.assign({}, item, { backendSaved: true }) : item
+    );
+    setStorage(WORKS_KEY, next);
+  },
+
+  /** 点开看大图（不会像自动预览那样一碰就消失） */
+  onPreviewGenerated() {
+    const generated = this.data.generated;
+    if (!generated) return;
+
+    const current = generated.localPath || generated.imageUrl;
+    if (!current) {
+      wx.showToast({ title: '图片还没准备好', icon: 'none' });
+      return;
+    }
+
+    wx.previewImage({ current: current, urls: [current] });
+  },
+
+  /** 保存生成的插画到相册 */
+  onSaveGenerated() {
+    const generated = this.data.generated;
+    if (!generated || this.data.savingImage) return;
+
+    const filePath = generated.localPath || generated.imageUrl;
+    if (!filePath) return;
+
+    this.setData({ savingImage: true });
+
+    this.saveToAlbum(filePath)
+      .then(() => {
+        this.setData({ 'generated.albumSaved': true });
+        wx.showToast({ title: '已保存到相册', icon: 'success' });
+      })
+      .catch((err) => {
+        console.warn('[collage] 保存到相册失败:', err);
+      })
+      .then(() => this.setData({ savingImage: false }));
+  },
+
+  /** 同步失败后的重试 */
+  onRetryBackend() {
+    const generated = this.data.generated;
+    if (!generated) return;
+
+    wx.showLoading({ title: '正在同步', mask: true });
+
+    collageApi
+      .saveWork({ workId: generated.workId, imageUrl: generated.imageUrl, title: generated.title })
+      .then(() => {
+        this.markWorkSynced(generated.workId);
+        this.setData({ 'generated.backendSaved': true });
+        wx.hideLoading();
+        wx.showToast({ title: '已同步到作品集', icon: 'success' });
+      })
+      .catch((err) => {
+        console.warn('[collage] 重试同步失败:', err);
+        wx.hideLoading();
+        wx.showToast({ title: '同步失败，请稍后重试', icon: 'none' });
+      });
   },
 
   onSavePoster() {
@@ -515,8 +634,13 @@ Page({
     });
   },
 
-  /** 作品存本地 storage，供「我的作品」页展示 */
-  saveWorkRecord(imagePath) {
+  /**
+   * 作品存本地 storage，供「我的作品」页展示。
+   * @param {string} imagePath 本地图片路径（可能为空，此时用 imageUrl）
+   * @param {Object} [extra] 覆盖字段：workId / imageUrl / title（AI 生成的作品用后端的 ID）
+   */
+  saveWorkRecord(imagePath, extra) {
+    const options = extra || {};
     const now = new Date();
     const pad = (n) => (n < 10 ? '0' + n : '' + n);
 
@@ -525,36 +649,51 @@ Page({
       ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
 
     const record = {
-      workId: 'work-' + now.getTime(),
-      imagePath: imagePath,
+      workId: options.workId || 'work-' + now.getTime(),
+      imagePath: imagePath || '',
+      imageUrl: options.imageUrl || '',
+      title: options.title || '',
       templateId: this.data.activeTemplateId,
       templateName: this.data.activeTemplateName,
       itemCount: this.data.itemCount,
       uiMode: this.data.uiMode,
-      createdAt: createdAt
+      createdAt: createdAt,
+      backendSaved: false
     };
 
     const list = getStorage(WORKS_KEY, []) || [];
-    const next = [record].concat(list).slice(0, WORKS_LIMIT);
+    // 同一个 workId 覆盖而不是重复插入
+    const next = [record]
+      .concat(list.filter((item) => item.workId !== record.workId))
+      .slice(0, WORKS_LIMIT);
 
     setStorage(WORKS_KEY, next);
-
-    // TODO 联调时同步到后端：collageApi.saveWork({ workId, imageUrl, title })
 
     return record;
   },
 
   /* ==================== 定制文创 ==================== */
 
-  /** 带上作品图片参数跳到商品详情 */
+  /**
+   * 带上作品图片参数跳到商品详情。
+   * 优先用「AI 生成的家庭插画」；没有生成过才退回画布导出的手绘海报。
+   */
   onCustomGoods() {
     if (this.data.navigating) return;
 
     const base = '/pages/goods-detail/goods-detail?goodsId=' + CUSTOM_GOODS_ID;
-    const comp = this.canvas();
+    const generated = this.data.generated;
 
+    // 1) 已经 AI 生成过：直接用生成的插画（本地文件优先，其次服务端地址）
+    if (generated && (generated.localPath || generated.imageUrl)) {
+      this.goCustomGoods(base, generated.localPath || generated.imageUrl);
+      return;
+    }
+
+    // 2) 没生成过：导出画布上的手绘拼贴
+    const comp = this.canvas();
     if (!comp || !comp.hasItems()) {
-      wx.navigateTo({ url: base, fail: () => wx.redirectTo({ url: base }) });
+      this.goCustomGoods(base, '');
       return;
     }
 
@@ -562,21 +701,21 @@ Page({
 
     comp
       .exportPoster()
-      .then((tempPath) => {
-        const url = base + '&workImage=' + encodeURIComponent(tempPath);
-        wx.navigateTo({
-          url: url,
-          fail: () => wx.redirectTo({ url: url }),
-          complete: () => this.setData({ navigating: false })
-        });
-      })
+      .then((tempPath) => this.goCustomGoods(base, tempPath))
       .catch((err) => {
         console.error('[collage] 作品图导出失败，降级跳转:', err);
-        wx.navigateTo({
-          url: base,
-          fail: () => wx.redirectTo({ url: base }),
-          complete: () => this.setData({ navigating: false })
-        });
+        this.goCustomGoods(base, '');
       });
+  },
+
+  /** 统一跳转：workImage 为空时不带该参数 */
+  goCustomGoods(base, image) {
+    const url = image ? base + '&workImage=' + encodeURIComponent(image) : base;
+
+    wx.navigateTo({
+      url: url,
+      fail: () => wx.redirectTo({ url: url }),
+      complete: () => this.setData({ navigating: false })
+    });
   }
 });

@@ -20,6 +20,8 @@ os.environ["AUTH_REQUIRED"] = "false"
 os.environ["MOCK_PAY_AUTO_CONFIRM"] = "true"
 os.environ["NOT_FOUND_AS_NULL"] = "true"
 os.environ["LOG_LEVEL"] = "WARNING"
+# 测试必须走「本地合成」，否则开发机 .env 里配了 IMAGE_API_KEY 就会真的去调外部服务
+os.environ["IMAGE_API_KEY"] = ""
 os.environ["DOCS_ENABLED"] = "true"
 
 from fastapi.testclient import TestClient  # noqa: E402

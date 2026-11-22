@@ -163,6 +163,7 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 8000   # 直接用 uvicorn
 | 18 | POST | `/goods/orders/{orderId}/cancel` | 取消待付款订单 | 5.3 扩展 |
 | 19 | POST | `/notify/wechat-pay` | 微信支付回调（服务端到服务端） | 5.3 扩展 |
 | 20 | POST | `/user/logout` | 退出登录（作废 token） | 扩展 |
+| 21 | POST | `/collage/generate` | AI 生成家庭插画（本地合成 / 可选外部） | 见文末 |
 | 21 | GET | `/health` | 健康检查 | 扩展 |
 
 **返回约定**（与文档 1.1 一致）
@@ -371,8 +372,8 @@ UI 类（1Panel / 宝塔 / 其他带面板的反代工具）：新建反向代�
 挂到了 `/media`：
 
 ```
-接口返回   https://你的域名/media/goods/goods-01-cover.png
-磁盘文件   server/media/goods/goods-01-cover.png
+接口返回   https://你的域名/media/goods/1-1.png
+磁盘文件   server/media/goods/1-1.png
 ```
 
 配置只需要一行，然后把文件按目录放进去：
@@ -383,23 +384,60 @@ MEDIA_BASE_URL=https://你的域名/media
 
 ```
 server/media/
-├─ goods/       商品封面与详情图      goods-01-cover.png, goods-01-detail-01.jpg …
-├─ spot/        手绘地图点位配图      spot-01.png …
-├─ template/    拼贴模板封面          tpl-childlike-cover.png …
-├─ material/    拼贴素材（透明底 PNG）mat-childlike-01.png …
+├─ goods/      商品图：{n}-1 封面，{n}-2 / {n}-3 详情    1-1.png … 5-3.png
+├─ spot/       手绘地图点位配图      spot-01.png …
+├─ template/   拼贴模板封面          tpl-childlike-cover.png …
+├─ material/   拼贴素材（透明底 PNG）mat-childlike-01.png …
 ├─ audio/      普通话 / 客家话音频     mat-childlike-01-mandarin.mp3 …
-├─ nfc/         史料图片              NFC-TAG-0001-history-01.jpg …
-└─ work/        拼贴成图              work-20251103210512-4821.png …
+├─ nfc/        史料图片              NFC-TAG-0001-history-01.jpg …
+└─ work/       拼贴成图              work-20251103210512-4821.png
 ```
 
-文件名要和 `app/seed_data.py` 里的地址对上（就是 `mock/` 里那批名字）。验证：
+商品图按「商品序号-图序号」命名：`n-1` 封面，`n-2`、`n-3` 详情长图（按数组顺序纵向渲染）。
+**商品序号和 goodsId 不是一回事**，映射写在 `app/seed_data.py` 顶部，同时决定列表展示顺序：
+
+| 素材编号 | 商品 | goodsId | 列表位置 |
+| --- | --- | --- | --- |
+| 1 | 客家围屋冰箱贴 | `goods-01` | 第 1 个 |
+| 2 | 擂茶礼盒 | `goods-03` | 第 2 个 |
+| 3 | 童趣拼贴明信片套装 | `goods-02` | 第 3 个 |
+| 4 | 土楼手绘帆布袋 | `goods-04` | 第 4 个 |
+| 5 | 客家花灯书签 | `goods-05` | 第 5 个 |
+
+加第 6 个商品：文件放成 `6-1.png`、`6-2.png`…，在 `seed_data.py` 里补一条
+`"coverUrl": _goods_cover(6), "detailImageUrls": _goods_details(6), "sortOrder": 6`；
+详情图不是两张时用 `_goods_details(6, count=3)`。
+
+改完种子要重新导入（`INSERT OR IGNORE` 不会覆盖已有行）：
 
 ```bash
-curl -I https://你的域名/media/goods/goods-01-cover.png    # 200 + image/png
-curl -s https://你的域名/api/goods/list | head -c 120       # coverUrl 已是新域名
+.venv/bin/python -m app.seed --force      # Windows: .venv\Scripts\python.exe -m app.seed --force
 ```
 
-`/media` 由 FastAPI 的 `StaticFiles` 提供，支持 `Range` 请求，音频可以边下边播。
+验证：
+
+```bash
+curl -I https://你的域名/media/goods/1-1.png    # 200 + image/png
+curl -s https://你的域名/api/goods/list | head -c 120   # coverUrl 已是新域名
+```
+
+`/media` 由 FastAPI 的 `StaticFiles` 子类提供，支持 `Range` 请求，音频可以边下边播。
+
+**缓存策略**（`MEDIA_CACHE_SECONDS`）：
+
+| 值 | 响应头 | 效果 |
+| --- | --- | --- |
+| `0`（默认） | `cache-control: no-store, no-cache, must-revalidate, max-age=0`，并且**去掉 ETag / Last-Modified** | 每次都 200 + 完整内容，永远不会出现 304 |
+| `>0`（如 `86400`） | `cache-control: public, max-age=N`，保留 ETag | 允许客户端缓存并走 304 协商，省流量 |
+
+默认关闭的理由：`304 Not Modified` 本身是正确行为（客户端有缓存、服务端确认没变），
+但微信开发者工具/部分真机基础库对图片 304 的处理不一致——服务端日志明明是 304，
+页面上却没图，排查成本很高。联调阶段用「每次 200」最确定；上线稳定后再按需要开缓存。
+
+```bash
+curl -I http://127.0.0.1:8000/media/goods/1-1.png
+# 期望：200（never 304）+ cache-control: no-store...
+```
 
 **什么时候才值得上 CDN / 对象存储**：素材体积大、并发高、需要就近加速或省服务器带宽。
 现在这个体量（几十张图、几段音频）服务直出完全够用；将来换 CDN 只需要改 `MEDIA_BASE_URL`，
@@ -433,7 +471,13 @@ Windows：`sqlite3.exe data\app.db ".backup 'backup\app.db'"`，或直接停服�
 ```bash
 uv run python -m app.seed --force            # 重建参考数据（不动用户和订单）
 uv run python -m app.seed --force --orders   # 连三条演示订单一起重建
+uv run python -m app.seed --sync-covers      # 只刷订单里的封面快照（图片改名后用这个）
 ```
+
+> **图片改名或换目录后，订单页会出现裂图**：订单的 `cover_url` 是「下单时的快照」，
+> `--force` 只重建商品表，不会动订单。这时跑一次 `--sync-covers`，把所有订单的封面
+> 对齐成商品当前封面即可（只改封面地址，不动订单金额、状态、收货信息）。
+> 如果小程序本地还存着旧订单（storage 里的 `MY_ORDERS`），需要清缓存才会消失。
 
 种子导入是幂等的（`INSERT OR IGNORE`），不带 `--force` 不会覆盖你手工改过的数据。
 也可以直接用 `sqlite3` 改单条记录，重启不需要。
@@ -477,17 +521,33 @@ sudo systemctl status xiangyu-api && journalctl -u xiangyu-api -f
 
 ### 8.2 Windows
 
-推荐用仓库自带的两个脚本（无第三方依赖，自带看门狗）：
+三个脚本，互相配合，不需要第三方依赖：
 
 ```powershell
 cd D:\Code\jzzb\server
 
-.\start.ps1                 # 前台跑，Ctrl+C 停（调试用）
-.\start.ps1 -Background     # 后台跑，关掉终端也不影响；退出后 3 秒自动拉起
+.\start.ps1                 # 后台常驻：启动 + 自动重启，关掉终端也不停
+.\start.ps1 -Foreground     # 前台跑（调试用，Ctrl+C 停，日志打在控制台）
 .\start.ps1 -Port 8010      # 换端口
+
+.\service.ps1 -Action install       # 装成登录自启（隐藏窗口，不需要管理员）
+.\service.ps1 -Action status        # 自启状态 + 端口 + healthz + 看门狗
+.\service.ps1 -Action stop          # 停服务（保留自启）
+.\service.ps1 -Action remove        # 删掉自启 + 停服务
 
 .\stop.ps1                  # 停掉看门狗 + 服务（先停看门狗，否则它会把服务拉起来）
 ```
+
+**`.\start.ps1` 默认就是后台模式**：它拉一个隐藏的看门狗进程，看门狗再跑 uvicorn；
+uvicorn 退出后 3 秒自动重启（启动即崩的情况退避 15 秒，避免疯狂刷日志）。
+关终端、Ctrl+C 都不会带走它，因为它已经脱离了当前控制台。
+
+**开机/登录自启**：`.\service.ps1 -Action install` 会写一条 HKCU 的 Run 项
+（`HKCU\Software\Microsoft\Windows\CurrentVersion\Run\xiangyu-api`），登录时隐藏启动看门狗。
+用注册表而不是「启动文件夹」，是因为 Windows Defender 的「受控文件夹访问」经常会拦住往
+Startup 目录写文件（我实测就被拒了）。
+需要**开机即启、不用登录**时用 `.\service.ps1 -Action install -AtStartup`（要求管理员权限，
+它会注册计划任务；没有管理员权限会自动回落到 HKCU Run 并提示）。
 
 后台模式的产物都在 `logs\`：
 
@@ -495,19 +555,12 @@ cd D:\Code\jzzb\server
 | --- | --- |
 | `logs\server.log` | uvicorn 日志（UTF-8，超过 5MB 自动轮转为 `server.log.1`） |
 | `logs\watchdog.log` | 每次进程退出记一行：时间、退出码、运行时长 —— **排查「服务为什么停了」先看这个** |
-| `logs\watchdog.pid` | 看门狗进程号 |
+| `logs\watchdog.pid` | 看门狗进程号（`stop.ps1` 靠它先杀看门狗） |
 
 > 看日志注意编码：PowerShell 5.1 的 `Get-Content` 默认按 ANSI 读，中文会花。
 > 用 `Get-Content -Encoding UTF8 .\logs\server.log -Tail 20 -Wait`，或者用 VS Code 打开。
 
-**开机自启（任务计划程序，可选）**
-
-```powershell
-schtasks /Create /TN "xiangyu-api" /SC ONSTART /RU SYSTEM /RL HIGHEST /F `
-  /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File D:\Code\jzzb\server\start.ps1 -WatchDog"
-```
-
-**注册成 Windows 服务（NSSM，可选）**
+**真·Windows 服务（NSSM，可选）**——要在 `services.msc` 里看到它、或者完全不要登录会话时才需要：
 
 ```powershell
 nssm install xiangyu-api "D:\Code\jzzb\server\.venv\Scripts\python.exe" "D:\Code\jzzb\server\run.py"
@@ -531,6 +584,25 @@ Windows 上反向代理可以用 IIS + URL Rewrite / ARR，也可以把服务放
 | 日志里有 `exited code=0`，时长也不短 | 被别人正常停掉了（Ctrl+C、任务管理器结束进程、终端里 `Ctrl+Break`） | 用 `.\start.ps1 -Background` 跑，脱离终端 |
 | `watchdog.log` 里**没有**退出记录，进程却没了 | 看门狗本身被杀了（关终端、结束进程树） | 同上，后台模式；或注册成服务 |
 | 终端里看起来「卡住不动」 | Windows 控制台的快速编辑模式：鼠标在窗口里选中了文本，输出被暂停 | 在窗口里按 Esc 或按一下回车；长期运行别用前台模式 |
+
+**图片一直 `Pending`（不报错也不返回）时怎么查**
+
+先看 `logs\server.log` 里**有没有对应的 `/media/...` 请求**，这一步就能把问题切成两半：
+
+| 服务端日志 | 含义 | 处理 |
+| --- | --- | --- |
+| **完全没有** `/media/...` 这一行 | 请求没到后端：反代没转发 `/media/*`，或客户端走了代理/VPN | 反代放行 `/media/`；devtools 关掉代理；或临时把 `MEDIA_BASE_URL` 指回 `http://127.0.0.1:8000/media` |
+| 有 `GET /media/... -> 200` 但客户端仍 pending | 响应没被客户端收完（代理缓冲、TLS 拦截、杀软） | 用浏览器直连同一 URL 对照；换代理 / 关 TLS 拦截 |
+| 有 `-> 404` | 文件不在 `media/` 下，或文件名为空 | 检查 `media\goods\1-1.png` 是否存在 |
+
+判断当前图片前缀指向哪里，最快的两条：
+
+```bash
+curl http://127.0.0.1:8000/healthz     # 看 mediaBase / mediaDir 两个字段
+```
+
+启动日志里也有一行 `资源前缀 http://.../media`。注意：**图片地址来自接口返回的 `coverUrl`，
+由 `MEDIA_BASE_URL` 决定，和小程序的 `BASE_URL` 无关**——改 `BASE_URL` 不会影响图片从哪个域名加载。
 
 **另外两个坑：**
 
@@ -606,8 +678,8 @@ curl -X POST http://127.0.0.1:8000/api/goods/orders \
 
 | 项 | 现状 | 后续 |
 | --- | --- | --- |
-| 拼贴合成（3.3） | 只记录排版并返回占位地址 `/work/{workId}.png`，不做像素合成 | 接 Pillow / 独立渲染服务，替换 `image_url` 来源即可，接口结构不用动 |
-| 媒体文件 | 图片音频仍由 CDN / 反向代理提供，本服务不托管 | 也可以挂 `StaticFiles` 到 `/media`，再把 `MEDIA_BASE_URL` 指过来 |
+| 拼贴合成（3.3 `/collage/compose`） | 接口保留，只记录排版并返回占位地址（旧前端用）；**新前端的「AI 生成」走 `/collage/generate`，会真实出图** | 需要像素级合成时也可以在 compose 里复用 `illustration.py` |
+| 媒体文件 | 由本服务 `/media` 直出（见 6.5），不需要 CDN | 量大时换成 CDN，只改 `MEDIA_BASE_URL` |
 | 并发与扩展 | 单进程 + SQLite，适合一台机器的小程序 | 多实例部署要换 PostgreSQL，并把 `db.py` 换成 SQLAlchemy / asyncpg |
 | 管理后台 | 没有 | 商品 / 点位 / 标签目前改 `seed_data.py` 或直接改库 |
 | 分页 | 没实现，数据量小 | 按文档 5.4 加可选 `page` / `pageSize` 即可 |
@@ -615,17 +687,29 @@ curl -X POST http://127.0.0.1:8000/api/goods/orders \
 | 用户地址 | 仍存小程序本地 storage（文档 1.5 的约定） | 要同步多端再开接口 |
 
 
-## 家庭拼贴图生图
+## 家庭拼贴图生图（AI 生图）
 
-小程序拼贴页新增「AI 生成家庭插画」按钮，将当前画布 PNG 发到 `POST /api/collage/generate`。输入为 `{templateId, image}`，image 为 PNG/JPEG/WebP base64 data URL（解码后最多 8MB）。按模板主题使用童趣或复古提示词，生成后调用现有保存接口并预览。原有海报导出保留。
+拼贴页的「AI 生成家庭插画」→ `POST /api/collage/generate`。
 
-在 `.env` 填写 `IMAGE_API_KEY` 后重启服务。默认 `IMAGE_API_BASE=https://aiapi.shiwuyan.cn/v1`，`IMAGE_MODEL=[ant]gemini-2.5-flash`。密钥只在后端读取。
+- **入参**：`{ "templateId": "tpl-childlike", "image": "data:image/png;base64,..." }`，
+  `image` 是画布导出图（`exportPoster()` 的结果），解码后上限 12MB。
+- **返回**：`{ workId, imageUrl, width, height }`。图片同时写进 `collage_works` 表（`saved=1`），
+  所以生成完立刻能在「我的作品」里看到；前端随后调 `POST /collage/works` 只是补标题（幂等）。
 
-默认假设服务支持 OpenAI 兼容 `/chat/completions` 的多模态请求。支持返回 message.content 中的 image_url、message.images、inline_data / inlineData、文本中的 base64 图片或 Markdown HTTPS 图片。模型只返回文字时报告失败，不生成占位作品。没有服务商协议确认或真实密钥调用记录，兼容性仍需实际验证；不自动重试付费生成。
+两种实现，按配置自动选择：
 
-后端等待上游最多 100 秒，小程序请求超时 115 秒；代理也需允许相应等待时间。超时并不代表上游没有计费，重试前应核查服务商记录。耗时更长的模型需要另接异步任务协议。
+| 配置 | 行为 |
+| --- | --- |
+| `IMAGE_API_KEY` 留空（**默认**） | **本地合成**：Pillow 把拼贴成图装进 1080×1440 的海报，用 `media/material/1..4.jpg` 做模糊底纹（童趣取 1/2 的彩稿，复古取 3/4 的线稿）。离线、免费、约 1 秒出图 |
+| 配了 `IMAGE_API_KEY` | 调外部图生图（OpenAI 兼容：`gpt-image-*` 走 `/images/edits`，其余走 `/chat/completions`）；拿到结果后**下载回本地 `media/work/`**，统一用我们的域名下发（省掉图片域名的 downloadFile 白名单，也不会因外链过期裂图）；失败或超时**自动回落**本地合成 |
 
-微信后台需配置 request 合法域名，以及生成图片所在主机的 downloadFile 合法域名。base64 返回的图片落入本地 media/work；HTTPS 链接返回的图片使用服务商原地址，可能存在过期时间。正式长期保存建议对接可信对象存储。返回 width/height 是模板画布尺寸，不保证与模型实际输出像素一致。
+要点：
+
+- 生成结果写进 `media/work/`，对外地址 = `MEDIA_BASE_URL` + `/work/xxx.jpg`（`width/height` 是真实像素）；
+- 小程序后台要有 **request** 合法域名；预览用 `wx.downloadFile`，所以同一个域名还要进 **downloadFile** 合法域名；
+- 前端请求超时是 115 秒，本地合成远小于这个值；外部模型如果更慢，需要改成异步任务协议；
+- 想换成真正的生图模型：替换 `app/services/illustration.py` 里的 `render()`（或改 `image_generation.py` 的协议），
+  接口契约不用动。
 
 验证：模拟上游图片返回、输入校验、文字响应失败及生成保存流程，并运行完整后端测试。真实服务出图和微信真机尚未验证。
 

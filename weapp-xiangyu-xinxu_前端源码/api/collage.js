@@ -119,5 +119,13 @@ module.exports = {
   getTemplates,
   getMaterials,
   compose,
-  saveWork
+  saveWork,
+  /** 我的作品（服务端）：GET /collage/works */
+  getWorks: function () {
+    return request({ url: '/collage/works', method: 'GET', data: {} });
+  },
+  /** 删除服务端作品：DELETE /collage/works/{workId} */
+  deleteWork: function (workId) {
+    return request({ url: '/collage/works/' + workId, method: 'DELETE', data: {} });
+  }
 };

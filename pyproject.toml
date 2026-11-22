@@ -12,6 +12,8 @@ dependencies = [
     "httpx>=0.27.0",
     # Windows 没有系统自带的 IANA 时区库，zoneinfo 需要它才能解析 Asia/Shanghai
     "tzdata>=2024.1",
+    # 「AI 生成家庭插画」用 Pillow 在本地做合成
+    "pillow>=10.0.0",
 ]
 
 [project.optional-dependencies]

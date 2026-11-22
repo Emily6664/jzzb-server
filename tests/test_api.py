@@ -139,6 +139,62 @@ def test_collage_compose_rejects_unknown_material(client: TestClient, api: str):
     assert result["code"] == 40001
 
 
+def _fake_collage_data_url() -> str:
+    """造一张 60×80 的拼贴成图，模拟拖拽画布导出的 PNG。"""
+    import base64
+    import io
+
+    from PIL import Image as PILImage
+
+    buffer = io.BytesIO()
+    PILImage.new("RGB", (60, 80), (232, 220, 198)).save(buffer, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+
+def test_collage_generate_illustration(client: TestClient, api: str):
+    """AI 生图：本地合成 1080×1440 的插画，且生成的文件能通过 /media 访问。"""
+    from app.config import get_settings
+
+    payload = _data(
+        client.post(
+            f"{api}/collage/generate",
+            json={"templateId": "tpl-childlike", "image": _fake_collage_data_url()},
+        )
+    )
+
+    assert payload["workId"].startswith("work-")
+    assert payload["imageUrl"].endswith(".jpg")
+    assert (payload["width"], payload["height"]) == (1080, 1440)
+
+    name = payload["imageUrl"].rsplit("/", 1)[-1]
+    served = client.get(f"/media/work/{name}")
+    assert served.status_code == 200
+    assert served.headers["content-type"].startswith("image/jpeg")
+
+    # 生成即入库：不用再调 /collage/works，作品列表里就能看到
+    works = _data(client.get(f"{api}/collage/works"))
+    assert any(item["workId"] == payload["workId"] for item in works)
+
+    # 生成物是运行时产物，不要留在仓库里
+    (get_settings().media_dir / "work" / name).unlink(missing_ok=True)
+
+
+def test_collage_generate_rejects_bad_payload(client: TestClient, api: str):
+    assert _error(
+        client.post(
+            f"{api}/collage/generate",
+            json={"templateId": "tpl-childlike", "image": "not-a-data-url"},
+        )
+    )["code"] == 40001
+
+    assert _error(
+        client.post(
+            f"{api}/collage/generate",
+            json={"templateId": "tpl-nope", "image": _fake_collage_data_url()},
+        )
+    )["code"] == 40001
+
+
 # ==================== NFC ====================
 
 

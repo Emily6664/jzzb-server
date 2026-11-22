@@ -18,6 +18,7 @@ $effectivePort = if ($Port -gt 0) { $Port } else { 8000 }
 #    Find it by command line, so a lost/stale watchdog.pid cannot leave it running.
 $self = $PID
 $watchdogs = @()
+$killedIds = @()
 try {
     $watchdogs = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
         Where-Object { $_.ProcessId -ne $self -and $_.CommandLine -like '*start.ps1*' -and $_.CommandLine -like '*-WatchDog*' }
@@ -26,21 +27,24 @@ try {
 foreach ($watchdog in $watchdogs) {
     Stop-Process -Id $watchdog.ProcessId -Force -ErrorAction SilentlyContinue
     "stopped watchdog pid=$($watchdog.ProcessId)"
+    $killedIds += $watchdog.ProcessId
 }
 
 if (Test-Path -LiteralPath $pidFile) {
     $text = ((Get-Content -LiteralPath $pidFile -Raw) -replace '\s', '')
     if ($text -match '^\d+$') {
         $watchId = [int]$text
-        $proc = Get-Process -Id $watchId -ErrorAction SilentlyContinue
-        if ($proc) {
-            Stop-Process -Id $watchId -Force -ErrorAction SilentlyContinue
-            "stopped watchdog pid=$watchId"
+        if ($killedIds -notcontains $watchId) {
+            $proc = Get-Process -Id $watchId -ErrorAction SilentlyContinue
+            if ($proc) {
+                Stop-Process -Id $watchId -Force -ErrorAction SilentlyContinue
+                "stopped watchdog pid=$watchId"
+            }
         }
     }
     Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
-} else {
-    "no watchdog.pid found (foreground run?)"
+} elseif ($killedIds.Count -eq 0) {
+    "no watchdog found (foreground run?)"
 }
 
 # 2. stop whatever python still listens on the port

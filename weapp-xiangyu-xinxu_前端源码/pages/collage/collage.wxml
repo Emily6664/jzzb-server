@@ -115,8 +115,38 @@
     </button>
   </view>
 
+  <!-- ============ 生成结果（留在页面上，可保存） ============ -->
+  <view class="sec result" wx:if="{{generated}}">
+    <view class="sec-head">
+      <text class="cap">已生成</text>
+      <text class="sec-note">{{generated.backendSaved ? '已存入「我的作品」' : '只在本机，可重试同步'}}</text>
+    </view>
+
+    <image
+      class="result-img"
+      src="{{generated.localPath || generated.imageUrl}}"
+      mode="aspectFit"
+      bindtap="onPreviewGenerated"
+      aria-role="button"
+      aria-label="查看生成的家庭插画"
+    />
+
+    <view class="result-meta">
+      <text class="result-title">{{generated.title}}</text>
+      <text class="result-time">{{generated.createdAt}}</text>
+    </view>
+
+    <view class="result-acts">
+      <button class="mini-btn" bindtap="onPreviewGenerated">查看大图</button>
+      <button class="mini-btn" bindtap="onSaveGenerated" loading="{{savingImage}}" disabled="{{savingImage}}">
+        {{generated.albumSaved ? '已存相册' : '保存到相册'}}
+      </button>
+      <button wx:if="{{!generated.backendSaved}}" class="mini-btn is-danger" bindtap="onRetryBackend">重试同步</button>
+    </view>
+  </view>
+
   <button class="btn-line acts-line" bindtap="onCustomGoods" loading="{{navigating}}">
-    定制文创 · 用这张图去挑商品 →
+    {{generated ? '定制文创 · 用 AI 插画去挑商品 →' : '定制文创 · 用这张图去挑商品 →'}}
   </button>
 
   <view class="foot-note">画布上共 {{itemCount}} 个素材 · 当前语音 {{voiceText}}</view>

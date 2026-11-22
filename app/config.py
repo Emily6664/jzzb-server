@@ -85,6 +85,12 @@ class Settings(BaseSettings):
     media_base_url: str = ""
     # 媒体文件根目录；服务启动时挂到 /media。目录不存在会自动创建。
     media_dir: Path = BASE_DIR / "media"
+    # 媒体缓存策略（秒）：
+    #   0（默认）= 禁用缓存，每次请求都 200 + 完整内容，不返回 304。
+    #             微信开发者工具对图片 304 处理不稳定，联调时关掉最省心。
+    #   >0        = 允许客户端缓存 N 秒（如 86400），会带 ETag/Last-Modified 并允许 304，
+    #             生产环境想省流量时用。
+    media_cache_seconds: int = 0
 
     # ---------- 图生图（OpenAI 兼容聊天协议） ----------
     image_api_base: str = "https://aiapi.shiwuyan.cn/v1"

@@ -13,7 +13,7 @@
 const USE_MOCK = false;
 
 // 后端接口地址占位，联调时替换成真实域名（需在小程序后台配置 request 合法域名）
-const BASE_URL = 'https://jjzb.proxy.lc.cygnomatic.net/api';
+const BASE_URL = 'http://127.0.0.1:8000/api';
 
 // 微信支付开关（与 USE_MOCK 是「与」关系）：
 //   PAY_ENABLE = false —— 模拟支付：不调用微信支付，直接判定支付成功（Demo / 答辩默认走这个）

@@ -16,7 +16,6 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
@@ -31,6 +30,7 @@ from .errors import (
     CODE_UNAUTHORIZED,
     BizError,
 )
+from .media_static import MediaStaticFiles
 from .routers import collage, goods, health, maps, nfc, notify, user
 
 logger = logging.getLogger(__name__)
@@ -80,12 +80,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     _configure_logging(settings.log_level)
     bootstrap()
     logger.info(
-        "%s v%s 启动完成｜监听 %s:%s｜数据库 %s｜登录校验=%s｜支付=%s",
+        "%s v%s 启动完成｜监听 %s:%s｜数据库 %s｜资源前缀 %s｜登录校验=%s｜支付=%s",
         settings.app_name,
         __version__,
         settings.host,
         settings.port,
         settings.database_file,
+        settings.media_public_base,
         "强制" if settings.auth_required else "宽松（无 token 走演示用户）",
         "开启" if settings.wechat_pay_enabled else "关闭",
     )
@@ -229,12 +230,15 @@ def _install_routes(app: FastAPI, settings: Settings) -> None:
 
 
 def _install_media(app: FastAPI, settings: Settings) -> None:
-    """把 MEDIA_DIR 挂到 /media。
+    """把 MEDIA_DIR 同时挂到 /media 和 {API_PREFIX}/media。
 
     这样图片、音频和接口共用同一个域名和同一个端口，不需要 CDN：
-      https://你的域名/media/goods/goods-01-cover.png
-        -> {MEDIA_DIR}/goods/goods-01-cover.png
-    配 MEDIA_BASE_URL=https://你的域名/media 之后，接口返回的资源地址会自动指过来。
+      https://你的域名/media/goods/1-1.png
+      https://你的域名/api/media/goods/1-1.png      ← 只放行 /api/* 的网关也能用
+        -> {MEDIA_DIR}/goods/1-1.png
+
+    两个路径指向同一个目录，按网关实际放行的前缀选一个填进 MEDIA_BASE_URL 即可。
+    网关若会把 /api 剥掉再转发（/api/media/x.png -> /media/x.png），两种也都命中。
     """
     directory = settings.media_dir
     try:
@@ -243,8 +247,22 @@ def _install_media(app: FastAPI, settings: Settings) -> None:
         logger.warning("媒体目录不可用，跳过 /media 挂载：%s（%s）", directory, exc)
         return
 
-    app.mount("/media", StaticFiles(directory=str(directory)), name="media")
-    logger.info("媒体目录已挂载：/media -> %s", directory)
+    static_files = MediaStaticFiles(
+        directory=str(directory),
+        cache_seconds=settings.media_cache_seconds,
+    )
+    app.mount("/media", static_files, name="media")
+
+    api_media_path = f"{settings.api_prefix}/media" if settings.api_prefix else "/media"
+    if api_media_path != "/media":
+        app.mount(api_media_path, static_files, name="api-media")
+
+    cache_note = (
+        f"缓存 {settings.media_cache_seconds}s（允许 304）"
+        if settings.media_cache_seconds > 0
+        else "禁用缓存（每次都 200，不返回 304）"
+    )
+    logger.info("媒体目录已挂载：/media 与 %s -> %s｜%s", api_media_path, directory, cache_note)
 
 
 def create_app() -> FastAPI:

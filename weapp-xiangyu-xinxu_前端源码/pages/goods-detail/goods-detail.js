@@ -72,6 +72,9 @@ Page({
 
     goodsId: '',
     workImage: '',
+    // 定制模式下的「换一件文创」：全部商品 + 当前选中
+    customGoods: [],
+    customLoading: false,
     loading: true,
     detail: null,
     failedImages: {},
@@ -100,6 +103,7 @@ Page({
 
     this.syncConfig();
     this.loadDetail();
+    if (this.data.workImage) this.loadCustomGoods();
     this.refreshAddress();
     this.refreshUser();
   },
@@ -126,6 +130,40 @@ Page({
   },
 
   /* ==================== 数据 ==================== */
+
+  /** 定制模式下，拉全部商品给「换一件文创」用 */
+  loadCustomGoods() {
+    this.setData({ customLoading: true });
+
+    goodsApi
+      .getList({})
+      .then((list) => {
+        this.setData({
+          customLoading: false,
+          customGoods: (list || []).map((item) => ({
+            goodsId: item.goodsId,
+            name: item.name,
+            priceText: formatPrice(item.price),
+            coverUrl: item.coverUrl
+          }))
+        });
+      })
+      .catch((err) => {
+        console.error('[goods-detail] 商品列表加载失败:', err);
+        this.setData({ customLoading: false });
+      });
+  },
+
+  /** 换一件文创：只换商品，作品图保持不变 */
+  onSwitchGoods(e) {
+    const goodsId = e.currentTarget.dataset.id;
+    if (!goodsId || goodsId === this.data.goodsId) return;
+
+    this.setData({ goodsId: goodsId, detail: null, coverFailed: false });
+    this.loadDetail();
+
+    wx.pageScrollTo({ scrollTop: 0, duration: 200 });
+  },
 
   loadDetail() {
     const goodsId = this.data.goodsId;

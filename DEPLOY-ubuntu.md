@@ -5,7 +5,7 @@ Windows 本地打包上传，服务器上解包运行，不依赖 git。
 
 - 应用目录：`/opt/xiangyu/server`
 - 运行用户：`xiangyu`（专用、无 sudo）
-- 监听：`127.0.0.1:8000`（同机反向代理；代理在别的机器才改 `0.0.0.0`）
+- 监听：`127.0.0.1:8000`（同机 Nginx 反代；代理在别的机器才改 `0.0.0.0`）
 - 数据库：`/opt/xiangyu/server/data/app.db`（SQLite，首次启动自动建表 + 种数据）
 
 > 下文用 `HOST` 表示服务器 IP/域名，`$DOMAIN` 表示对外域名（例如 `ecg.proxy.lc.cygnomatic.net`）。
@@ -90,8 +90,7 @@ chmod 600 .env
 nano .env
 ```
 
-`.env` 至少要改这几行（同机反代时 `HOST` 用 `127.0.0.1` 更安全）。
-**每一项的详细说明见 [`ENV.md`](ENV.md)**，包括默认值、什么时候要改、配错了会看到什么：
+`.env` 至少要改这几行（同机反代时 `HOST` 用 `127.0.0.1` 更安全）：
 
 ```ini
 HOST=127.0.0.1
@@ -99,8 +98,7 @@ PORT=8000
 API_PREFIX=/api
 DOCS_ENABLED=false
 AUTH_REQUIRED=false
-# 图片/音频不用 CDN：由本服务在 /media 下发（文件放 server/media/ 下）
-MEDIA_BASE_URL=https://$DOMAIN/media
+MEDIA_BASE_URL=https://cdn.你的域名.com/xiangyu
 ```
 
 先前台跑一遍，确认真能起来：
@@ -160,7 +158,7 @@ journalctl -u xiangyu-api -f        # 实时日志
 ## 4. 接入反向代理（软件不限）
 
 后端只监听一个端口，TLS 证书、限流、日志都在你的代理软件里做。这一节只讲**代理必须满足什么**，
-不绑定具体软件（Caddy / Traefik / 1Panel / 宝塔 / HAProxy / FRP / Cloudflare Tunnel 都适用）。
+不绑定具体软件（Caddy / Traefik / Nginx Proxy Manager / 1Panel / 宝塔 / HAProxy / FRP / Cloudflare Tunnel 都适用）。
 
 ### 4.1 后端这边先确认
 
@@ -181,15 +179,12 @@ API_PREFIX=/api    # 必须和小程序 BASE_URL 的结尾一致
 | 1 | 上游指向 `http://127.0.0.1:8000`（同机）或后端内网 `IP:8000` | 502，代理自己的错误页 |
 | 2 | 路径**原样转发**（保留 `/api`）；或整体剥掉 `/api`——二选一，不要混用 | 404（JSON 信封 `code: 40400`） |
 | 3 | 透传 `Host`、`X-Forwarded-For`、`X-Forwarded-Proto` | 上报的客户端 IP 变成代理 IP；`/docs` 里地址不对 |
-| 4 | `GET /`、`/media/*` 也要转发到后端 | 根路径看到代理默认页；图片、音频全部 404 |
+| 4 | `GET /` 也要转发到后端（返回只写着 OK 的页面） | 域名根路径看到代理的默认页 |
 | 5 | 读超时 ≥ 30s，请求体上限 ≥ 10MB | 偶发 504；以后传作品图会 413 |
 | 6 | HTTPS 终结在代理 | 小程序真机直接拒绝（只允许 https） |
 
 第 2 条说明：后端**同时**注册了 `/api/...` 和根路径两套路由，两种都能用；
 关键是 `API_PREFIX` 与小程序 `BASE_URL` 结尾对齐，且代理规则前后一致。
-
-`/media/*` 是图片和音频（服务直出，不需要 CDN，见 `README.md` 6.5），
-所以代理的匹配规则要么覆盖整个站点、要么同时放行 `/api/`、`/media/`、`/`。
 
 不需要 WebSocket、不需要 HTTP/2、不需要额外 gzip——接口都是小 JSON，别给自己加戏。
 
@@ -216,7 +211,7 @@ labels:
 
 后端跑在宿主机（不是容器）时，Traefik 里把服务地址写成 `http://宿主机内网IP:8000`。
 
-**UI 类工具**（1Panel / 宝塔 / 其他带面板的反代）：
+**UI 类工具**（Nginx Proxy Manager / 1Panel / 宝塔）：
 
 1. 新建「反向代理 / 网站」
 2. 域名填 `$DOMAIN`
@@ -231,10 +226,9 @@ labels:
 curl -i http://127.0.0.1:8000/healthz          # ① 后端本身
 curl -i https://$DOMAIN/                        # ② 走代理的根路径：应只显示 OK
 curl -s https://$DOMAIN/api/goods/list | head -c 200   # ③ 走代理的接口：5 件商品
-curl -I https://$DOMAIN/media/goods/goods-01-cover.png # ④ 图片（放进 media/ 之后才 200）
 ```
 
-四条都正常 = 反代接好了。第 ④ 条 404 有两种可能：文件还没放，或者代理没转发 `/media/*`。
+三条都正常 = 反代接好了。
 
 ### 4.5 502 / 404 对照表
 
@@ -320,12 +314,12 @@ ls -ld /opt/xiangyu/server/data       # drwxr-xr-x xiangyu xiangyu
 ### 6.2 端口与防火墙
 
 ```bash
-sudo ufw allow 80,443/tcp        # 只对外开放代理端口
+sudo ufw allow 'Nginx Full'      # 80 + 443
 sudo ufw deny 8000               # 8000 只给本机代理用
 sudo ufw enable
 ```
 
-- 同机代理：`HOST=127.0.0.1`（推荐，最省心）。
+- 同机 Nginx：`HOST=127.0.0.1`（推荐，最省心）。
 - 代理在另一台机器 / 容器里：`HOST=0.0.0.0`，同时用安全组只放行代理的 IP。
 
 ### 6.3 不要在服务运行时 `uv sync`
@@ -420,11 +414,9 @@ sqlite3 /opt/xiangyu/server/data/app.db "SELECT COUNT(*) FROM orders;"
 - [ ] `curl http://127.0.0.1:8000/healthz` 返回 `code: 0`
 - [ ] `curl https://$DOMAIN/` 返回只显示 `OK` 的 HTML
 - [ ] `curl https://$DOMAIN/api/goods/list` 返回 5 件商品
-- [ ] `curl -I https://$DOMAIN/media/goods/goods-01-cover.png` 返回 200（文件已放、代理已转发 `/media/*`）
 - [ ] `data/` 属主是 `xiangyu`，下单能成功（不是 500）
-- [ ] `media/` 属主是 `xiangyu`（否则上传/替换素材时写不进去）
 - [ ] `ufw` 只放行 80/443，8000 不对外
-- [ ] `DOCS_ENABLED=false`（不想公开 `/docs` 就在代理里也不要暴露 `/docs`）
+- [ ] `DOCS_ENABLED=false`（不想公开 `/docs` 就不配 Nginx 的 `/docs`）
 - [ ] 小程序 `USE_MOCK=false`、`BASE_URL` 指向 `https://$DOMAIN/api`，域名已进合法域名
 - [ ] 备份任务（cron 或手动 `sqlite3 .backup`）已安排
 
